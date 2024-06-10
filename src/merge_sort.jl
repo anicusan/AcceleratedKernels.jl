@@ -1,47 +1,11 @@
+@kernel inbounds=true function _merge_sort_block!(vec, @Const(comp))
 
-
-# NOTE: for many index calculations in this library, computation using zero-indexing leads to
-# fewer operations (also code is transpiled to CUDA / ROCm / oneAPI / Metal code which do zero
-# indexing). Internal calculations will be done using zero indexing except when actually
-# accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
-function _lower_bound_s0(arr, value, left=0, right=length(arr), comp=(<))
-    right <= 0 && return 0
-    comp(arr[right], value) && return right
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
-        if comp(arr[mid], value)
-            left = mid
-        else
-            right = mid
-        end
-    end
-    return left
-end
-
-
-function _upper_bound_s0(arr, value, left=0, right=length(arr), comp=(<))
-    right <= 0 && return 0
-    comp(value, arr[1]) && return 0
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
-        if comp(value, arr[mid + 1])
-            right = mid
-        else
-            left = mid
-        end
-    end
-    return right
-end
-
-
-
-@kernel cpu=false function _merge_sort_block!(vec, comp)
+    N = @groupsize()[1]
+    s_buf = @localmem eltype(vec) (N * 2,)
 
     T = eltype(vec)
+    I = typeof(N)
     len = length(vec)
-
-    N = @uniform @groupsize()[1]
-    s_buf = @localmem eltype(vec) (N * 2,)
 
     # NOTE: for many index calculations in this library, computation using zero-indexing leads to
     # fewer operations (also code is transpiled to CUDA / ROCm / oneAPI / Metal code which do zero
@@ -53,95 +17,68 @@ end
     ithread = @index(Local, Linear) - 1
 
     i = ithread + iblock * N * 2
-    if i < len
-        s_buf[ithread + 1] = vec[i + 1]
-    end
+    i < len && (s_buf[ithread + 1] = vec[i + 1])
 
     i = ithread + N + iblock * N * 2
-    if i < len
-        s_buf[ithread + N + 1] = vec[i + 1]
-    end
+    i < len && (s_buf[ithread + N + 1] = vec[i + 1])
 
     @synchronize()
 
     half_size_group = 1
     size_group = 2
 
-    niter = 0
-
     while half_size_group <= N
         gid = ithread ÷ half_size_group
 
         local v1::T
         local v2::T
-        pos1 = typemax(Int)
-        pos2 = typemax(Int)
+        pos1 = typemax(I)
+        pos2 = typemax(I)
 
         i = gid * size_group + half_size_group + iblock * N * 2
         if i < len
-            tid = gid * size_group + ithread ÷ half_size_group
+            tid = gid * size_group + ithread % half_size_group
             v1 = s_buf[tid + 1]
-            p_search = @view s_buf[gid * size_group + half_size_group + 1:end]
+
             i = (gid + 1) * size_group + iblock * N * 2
             n = i < len ? half_size_group : len - iblock * N * 2 - gid * size_group - half_size_group
-            pos1 = ithread ÷ half_size_group + _lower_bound_s0(p_search, v1, 0, n, comp)
+            lo = gid * size_group + half_size_group
+            hi = lo + n
+            pos1 = ithread % half_size_group + _lower_bound_s0(s_buf, v1, lo, hi, comp) - lo
         end
 
-        # if ithread == 0 && iblock == 0
-        #     @print("s_buf (ithread ", ithread, " niter ", niter, ")\n")
-        #     for i in 1:N * 2
-        #         @print(unsafe_trunc(Int, s_buf[i]), " ")
-        #     end
-        #     @print("\n")
-        #     @print("gid ", gid, " | tid ", tid, " | v1 ", v1, " | move_to ", gid * size_group + pos1 + 1, "\n\n")
-        # end
-
-        tid = gid * size_group + half_size_group + ithread ÷ half_size_group
+        tid = gid * size_group + half_size_group + ithread % half_size_group
         i = tid + iblock * N * 2
         if i < len
             v2 = s_buf[tid + 1]
-            p_search = @view s_buf[gid * size_group + 1:end]
-            pos2 = ithread ÷ half_size_group + _upper_bound_s0(p_search, v2, 0, half_size_group, comp)
+            lo = gid * size_group
+            hi = lo + half_size_group
+            pos2 = ithread % half_size_group + _upper_bound_s0(s_buf, v2, lo, hi, comp) - lo
         end
 
         @synchronize()
 
-        if pos1 != typemax(Int)
-            s_buf[gid * size_group + pos1 + 1] = v1
-        end
-        if pos2 != typemax(Int)
-            s_buf[gid * size_group + pos2 + 1] = v2
-        end
+        pos1 != typemax(I) && (s_buf[gid * size_group + pos1 + 1] = v1)
+        pos2 != typemax(I) && (s_buf[gid * size_group + pos2 + 1] = v2)
 
         @synchronize()
 
         half_size_group = half_size_group << 1
         size_group = size_group << 1
-
-        niter += 1
     end
-
-    # Debug: print s_buf
-    # @print("ithread ", ithread, " | iblock ", iblock, " | s_buf[ithread + 1] ", s_buf[ithread + 1], " | s_buf[ithread + N + 1] ", s_buf[ithread + N + 1], "\n")
 
     i = ithread + iblock * N * 2
-    if i < len
-        vec[i + 1] = s_buf[ithread + 1]
-    end
+    i < len && (vec[i + 1] = s_buf[ithread + 1])
 
     i = ithread + N + iblock * N * 2
-    if i < len
-        vec[i + 1] = s_buf[ithread + N + 1]
-    end
+    i < len && (vec[i + 1] = s_buf[ithread + N + 1])
 end
 
 
-@kernel cpu=false function _merge_sort_global!(vec_out, vec_in, comp, half_size_group)
+@kernel inbounds=true function _merge_sort_global!(@Const(vec_in), vec_out, @Const(comp), @Const(half_size_group))
 
-    T = eltype(vec_in)
     len = length(vec_in)
-
-    N = @uniform @groupsize()[1]
+    N = @groupsize()[1]
 
     # NOTE: for many index calculations in this library, computation using zero-indexing leads to
     # fewer operations (also code is transpiled to CUDA / ROCm / oneAPI / Metal code which do zero
@@ -157,39 +94,43 @@ end
     gid = idx ÷ half_size_group
 
     # Left half
-    pos_in = gid * size_group + idx ÷ half_size_group
-    left = gid * size_group + half_size_group
-    right = (gid + 1) * size_group
-    if right > len
-        right = len
-    end
+    pos_in = gid * size_group + idx % half_size_group
+    lo = gid * size_group + half_size_group
 
-    pos_out = pos_in + _lower_bound_s0(vec_in, vec_in[pos_in + 1], left, right, comp) - left
-    vec_out[pos_out + 1] = vec_in[pos_in + 1]
+    if lo >= len
+        # Incomplete left half, nothing to swap on the right, simply copy elements to be sorted
+        # in next iteration
+        pos_in < len && (vec_out[pos_in + 1] = vec_in[pos_in + 1])
+    else
 
-    # Right half
-    pos_in = gid * size_group + half_size_group + idx ÷ half_size_group
-    if pos_in < len
-        left = gid * size_group
-        right = left + half_size_group
-        pos_out = pos_in - half_size_group + _upper_bound_s0(vec_in, vec_in[pos_in + 1], left, right, comp) - left
+        hi = (gid + 1) * size_group
+        hi > len && (hi = len)
+
+        pos_out = pos_in + _lower_bound_s0(vec_in, vec_in[pos_in + 1], lo, hi, comp) - lo
         vec_out[pos_out + 1] = vec_in[pos_in + 1]
+
+        # Right half
+        pos_in = gid * size_group + half_size_group + idx % half_size_group
+
+        if pos_in < len
+            lo = gid * size_group
+            hi = lo + half_size_group
+            pos_out = pos_in - half_size_group + _upper_bound_s0(vec_in, vec_in[pos_in + 1], lo, hi, comp) - lo
+            vec_out[pos_out + 1] = vec_in[pos_in + 1]
+        end
     end
 end
 
 
-
 function merge_sort!(vec, comp=(<))
 
-
-    block_size = 16
+    block_size = 128
     blocks = (length(vec) + block_size * 2 - 1) ÷ (block_size * 2)
 
     backend = get_backend(vec)
 
     # Block level
     _merge_sort_block!(backend, block_size)(vec, comp, ndrange=(block_size * blocks,))
-    synchronize(backend)
 
     # Global level
     half_size_group = block_size * 2
@@ -203,9 +144,8 @@ function merge_sort!(vec, comp=(<))
 
         niter = 0
         while len > half_size_group
-            blocks = ((len + half_size_group - 1) ÷ half_size_group ÷ 2) * (half_size_group ÷ block_size)
-            kernel!(p2, p1, comp, half_size_group, ndrange=(blocks * block_size,))
-            synchronize(backend)
+            blocks = ((len + half_size_group - 1) ÷ half_size_group + 1) ÷ 2 * (half_size_group ÷ block_size)
+            kernel!(p1, p2, comp, half_size_group, ndrange=(block_size * blocks,))
 
             half_size_group = half_size_group << 1;
             size_group = size_group << 1;
@@ -214,15 +154,12 @@ function merge_sort!(vec, comp=(<))
             niter += 1
         end
 
-        display([p1 p2])
-        
         if isodd(niter)
             vec .= p1
         end
     end
 
+    synchronize(backend)
     nothing
 end
-
-
 
