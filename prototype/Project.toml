@@ -1,0 +1,4 @@
+[deps]
+AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
