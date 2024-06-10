@@ -16,6 +16,7 @@ using KernelAbstractions
 
 
 # Include code from other files
+include("utils.jl")
 include("merge_sort.jl")
 
 
