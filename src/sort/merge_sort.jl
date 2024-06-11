@@ -122,23 +122,40 @@ end
 end
 
 
-function merge_sort!(vec, comp=(<))
+function merge_sort!(
+    v::AbstractGPUVector;
 
-    block_size = 128
-    blocks = (length(vec) + block_size * 2 - 1) ÷ (block_size * 2)
+    lt=(<),
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
 
-    backend = get_backend(vec)
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractGPUVector}=nothing,
+)
+    # Simple sanity checks
+    @assert block_size > 0
+    if !isnothing(temp)
+        @assert length(temp) == length(v)
+        @assert eltype(temp) === eltype(v)
+    end
+
+    # Construct comparator
+    ord = Base.Order.ord(lt, by, rev, order)
+    comp = (x, y) -> Base.Order.lt(ord, x, y)
 
     # Block level
-    _merge_sort_block!(backend, block_size)(vec, comp, ndrange=(block_size * blocks,))
+    backend = get_backend(v)
+    blocks = (length(v) + block_size * 2 - 1) ÷ (block_size * 2)
+    _merge_sort_block!(backend, block_size)(v, comp, ndrange=(block_size * blocks,))
 
     # Global level
     half_size_group = block_size * 2
     size_group = half_size_group * 2
-    len = length(vec)
+    len = length(v)
     if len > half_size_group
-        p1 = vec
-        p2 = similar(vec)
+        p1 = v
+        p2 = isnothing(temp) ? similar(v) : temp
 
         kernel! = _merge_sort_global!(backend, block_size)
 
@@ -155,11 +172,32 @@ function merge_sort!(vec, comp=(<))
         end
 
         if isodd(niter)
-            vec .= p1
+            v .= p1
         end
     end
 
     synchronize(backend)
     nothing
+end
+
+
+function merge_sort(
+    v::AbstractGPUVector;
+
+    lt=(<),
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractGPUVector}=nothing,
+)
+    v_copy = copy(v)
+    merge_sort!(
+        v_copy,
+        lt=lt, by=by, rev=rev, order=order,
+        block_size=block_size, temp=temp,
+    )
+    v_copy
 end
 

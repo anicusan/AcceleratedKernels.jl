@@ -24,13 +24,14 @@ Random.seed!(0)
 
 for _ in 1:100
     num_elems = rand(1:1_000_000)
-    v1 = oneArray(rand(Float32, num_elems))
+    k1 = oneArray(rand(Float32, num_elems))
+    v1 = copy(k1)
 
-    v2 = copy(v1)
-    merge_sort!(v2)
+    merge_sort_by_key!(k1, v1)
 
-    v2h = Array(v2)
-    if !issorted(v2h)
+    k1h = Array(k1)
+    v1h = Array(v1)
+    if !issorted(k1h)
         println("not sorted!")
         display(num_elems)
         @assert false
@@ -40,11 +41,16 @@ end
 println("correctness checks passed")
 
 
-println("KernelAbstractions merge_sort on CUDA:")
-display(@benchmark merge_sort!(v1) setup=(v1 = oneArray(rand(Float32, 1_000_000))))
-
-println("Julia.Base sort:")
-display(@benchmark sort!(v1) setup=(v1 = rand(Float32, 1_000_000)))
+# println("KernelAbstractions merge_sort on CUDA:")
+# display(@benchmark merge_sort_by_key!(k1, v1) setup=(k1 = oneArray(rand(Float32, 1_000_000)); v1 = copy(k1)))
+# 
+# println("Julia.Base sort:")
+# function sort_by_key!(k, v)
+#     ix = sortperm(k)
+#     k .= k[ix]
+#     v .= v[ix]
+# end
+# display(@benchmark sort_by_key!(k1, v1) setup=(k1 = rand(Float32, 1_000_000); v1 = copy(k1)))
 
 
 # v1 = oneArray(rand(Int32, 10_000_000))

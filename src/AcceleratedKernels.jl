@@ -6,18 +6,26 @@
 
 module AcceleratedKernels
 
-# Functionality exported by this package by default
-export merge_sort!
+
+# No functionality exported by this package before discussion with community
 
 
 # Internal dependencies
-using GPUArrays: AbstractGPUVector
+using GPUArrays: AbstractGPUVector, @allowscalar
 using KernelAbstractions
+using DocStringExtensions
 
 
 # Include code from other files
 include("utils.jl")
-include("merge_sort.jl")
+include("task_partitioner.jl")
+include("sort/sort.jl")
+include("reduce.jl")
+include("mapreduce.jl")
+include("foreachindex.jl")
+
+
+# TODO: searchsorted, scan, any, scatter
 
 
 end     # module AcceleratedKernels
