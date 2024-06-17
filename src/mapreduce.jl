@@ -16,7 +16,7 @@
 
     i = ithread + iblock * (N * 2)
     if i >= len
-        sdata[ithread + 1] = f(init)
+        sdata[ithread + 1] = init
     elseif i + N >= len
         sdata[ithread + 1] = f(src[i + 1])
     else
@@ -96,7 +96,7 @@ function mapreduce(
 
     # Degenerate cases
     len = length(src)
-    len == 0 && return f(init)
+    len == 0 && return init
     len == 1 && return @allowscalar f(src[1])
     if len < switch_below
         h_src = Vector(src)
@@ -104,13 +104,14 @@ function mapreduce(
     end
 
     # Figure out type for destination
-    dst_type = typeof(f(init))
+    dst_type = typeof(init)
 
     # Each thread will handle two elements
     num_per_block = 2 * block_size
     blocks = (len + num_per_block - 1) ÷ num_per_block
 
     if !isnothing(temp)
+        @assert eltype(temp) === dst_type
         if length(temp) > blocks * 2
             dst = temp
         else
@@ -138,6 +139,8 @@ function mapreduce(
         return Base.mapreduce(f, op, h_src, init=init)
     end
 
+    # Now all src elements have been passed through f; just do final reduction, no map needed
+    kernel2! = _reduce_block!(backend, block_size)
     p1 = @view dst[1:len]
     p2 = @view dst[blocks + 1:end]
 
@@ -145,13 +148,13 @@ function mapreduce(
         blocks = (len + num_per_block - 1) ÷ num_per_block
 
         # Each block produces one reduced value
-        kernel!(p1, p2, f, op, init, ndrange=(block_size * blocks,))
+        kernel2!(p1, p2, op, init, ndrange=(block_size * blocks,))
         len = blocks
 
         if len < switch_below
             synchronize(backend)
             h_src = Vector(@view(p2[1:len]))
-            return Base.mapreduce(f, op, h_src, init=init)
+            return Base.reduce(op, h_src, init=init)
         end
 
         p1, p2 = p2, p1
@@ -160,5 +163,14 @@ function mapreduce(
 
     synchronize(backend)
     return @allowscalar p1[1]
+end
+
+
+function mapreduce(
+    f, op, src::AbstractVector;
+    init,
+)
+    # Fallback to Base
+    Base.mapreduce(f, op, src; init=init)
 end
 

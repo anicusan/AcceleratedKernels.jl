@@ -235,8 +235,7 @@ function merge_sort_by_key(
     temp_keys::Union{Nothing, AbstractGPUVector}=nothing,
     temp_values::Union{Nothing, AbstractGPUVector}=nothing,
 )
-
-    keys_copy = copy(key)
+    keys_copy = copy(keys)
     values_copy = copy(values)
 
     merge_sort_by_key!(

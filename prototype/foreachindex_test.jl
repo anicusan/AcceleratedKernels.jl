@@ -13,25 +13,24 @@ import AcceleratedKernels as AK
 Random.seed!(0)
 
 
-function akcopyto!(y, x)
-    @assert length(x) == length(y)
-    AK.foreachindex(x, max_tasks=1) do i
-        @inbounds y[i] = x[i]
+function akcopyto!(x)
+    AK.foreachindex(x) do i
+        @inbounds x[i] = i
     end
 end
 
 
-x = ones(Int32, 100_000)
-y = similar(x)
-akcopyto!(y, x)
+x = oneArray(ones(Int32, 100_000))
+akcopyto!(x)
 
-yh = Array(y)
-@assert all(yh .== 1)
+xh = Array(x)
+@assert all(xh .== 1:length(xh))
 println("Simple correctness check passed")
 
 println("AcceleratedKernels foreachindex copy:")
-display(@benchmark(akcopyto!(y, x)))
+display(@benchmark(akcopyto!(x)))
 
 println("oneAPI copyto!:")
-display(@benchmark(copyto!(y, x)))
+arange = Array(1:length(x))
+display(@benchmark(copyto!(x, arange)))
 

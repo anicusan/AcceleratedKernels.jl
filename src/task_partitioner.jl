@@ -115,11 +115,18 @@ function task_partition(f, num_elems, max_tasks=Threads.nthreads(), min_elems=1)
     if tp.num_tasks == 1
         f(1:num_elems)
     else
-        tasks = Vector{Task}(undef, tp.num_tasks)
-        @inbounds for i in 1:tp.num_tasks
+        tasks = Vector{Task}(undef, tp.num_tasks - 1)
+
+        # Launch first N - 1 tasks
+        @inbounds for i in 1:tp.num_tasks - 1
             tasks[i] = Threads.@spawn f(tp[i])
         end
-        @inbounds for i in 1:tp.num_tasks
+
+        # Execute task N on this main thread
+        @inbounds f(tp[tp.num_tasks])
+
+        # Wait for the tasks to finish
+        @inbounds for i in 1:tp.num_tasks - 1
             wait(tasks[i])
         end
     end

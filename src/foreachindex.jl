@@ -25,15 +25,25 @@ function foreachindex(
     itr,
     backend::CPU;
 
+    scheduler=:polyester,
     max_tasks=Threads.nthreads(),
     min_elems=1,
 )
-    # Fallback CPU implementation
-    task_partition(length(itr), max_tasks, min_elems) do irange
-        itr_indices = eachindex(itr)
-        for i in irange
-            @inline f(itr_indices[i])
+    # CPU implementation
+    if scheduler === :threads
+        task_partition(length(itr), max_tasks, min_elems) do irange
+            itr_indices = eachindex(itr)
+            for i in irange
+                @inbounds itr_index = itr_indices[i]
+                @inline f(itr_index)
+            end
         end
+    elseif scheduler === :polyester
+        @batch minbatch=min_elems per=thread for i in eachindex(itr)
+            @inline f(i)
+        end
+    else
+        throw(ArgumentError("`scheduler` must be `:threads` or `:polyester`. Received $scheduler"))
     end
 
     nothing
@@ -42,10 +52,19 @@ end
 
 """
     foreachindex(f, itr, [backend::GPU]; block_size::Int=256)
-    foreachindex(f, itr, [backend::CPU]; max_tasks=Threads.nthreads(), min_elems=1)
+    foreachindex(f, itr, [backend::CPU]; scheduler=:polyester, max_tasks=Threads.nthreads(), min_elems=1)
+    foreachindex(f, itr, backend=get_backend(itr); kwargs...)
 
-Parallelised `for` loop over the indices of an iterable. It allows you to run normal Julia code on
-a GPU over multiple e.g. CuArray, ROCArray, MtlArray, oneArray.
+Parallelised `for` loop over the indices of an iterable.
+
+It allows you to run normal Julia code on a GPU over multiple arrays - e.g. CuArray, ROCArray,
+MtlArray, oneArray - with one GPU thread per index.
+
+On CPUs at most `max_tasks` threads are launched, or fewer such that each thread processes at least
+`min_elems` indices; if a single task ends up being needed, `f` is inlined and no thread is
+launched. Tune it to your function - the more expensive it is, the fewer elements are needed to
+amortise the cost of launching a thread (which is a few μs). The scheduler can be `:polyester`
+to use Polyester.jl cheap threads or `:threads` to use normal Julia threads.
 
 # Examples
 Normally you would write a for loop like this:
@@ -60,8 +79,8 @@ end
 Using this function you can have the same for loop body over a GPU array:
 ```julia
 using CUDA
-x = CuArray(1:100)
-y = similar(x)
+const x = CuArray(1:100)
+const y = similar(x)
 foreachindex(x) do i
     @inbounds y[i] = 2 * x[i] + 1
 end
@@ -75,10 +94,31 @@ x = CuArray(1:100)
 y = 2 .* x .+ 1
 ```
 
-This construct is also optimised for CPU threads.
+**Important note**: to use this function on a GPU, the objects referenced inside the loop body must
+have known types - i.e. be inside a function, or `const` global objects; but you shouldn't use
+global objects anyways. For example:
+```julia
+using oneAPI
+
+x = oneArray(1:100)
+
+# CRASHES - typical error message: "Reason: unsupported dynamic function invocation"
+# foreachindex(x) do i
+#     x[i] = i
+# end
+
+function somecopy!(v)
+    # Because it is inside a function, the type of `v` will be known
+    foreachindex(v) do i
+        v[i] = i
+    end
+end
+
+somecopy!(x)    # This works
+```
 """
 function foreachindex(f, itr, backend=get_backend(itr); kwargs...)
-    @assert backend isa Backend
+    @assert backend isa Backend     # To avoid calling this function recursively
     foreachindex(f, itr, backend; kwargs...)
 end
 

@@ -7,6 +7,7 @@ version = "0.1.0-DEV"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 GPUArrays = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+Polyester = "f517fe37-dbe3-4b94-8317-1923a5111588"
 
 [compat]
 julia = "1.6.7"

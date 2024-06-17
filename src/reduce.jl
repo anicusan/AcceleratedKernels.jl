@@ -65,7 +65,8 @@
     end
 
     # Code below would work on NVidia GPUs with warp size of 32, but create race conditions and
-    # return incorrect results on Intel Graphics.
+    # return incorrect results on Intel Graphics. If we had the warp size we could avoid the
+    # @synchronize() calls
     #
     # if ithread < 32
     #     N >= 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
@@ -108,7 +109,7 @@ function reduce(
     blocks = (len + num_per_block - 1) ÷ num_per_block
 
     if !isnothing(temp)
-        if length(temp) > blocks * 2
+        if length(temp) >= blocks * 2
             dst = temp
         else
             @warn "temp vector given was too short; replacing with new allocation"
@@ -126,8 +127,6 @@ function reduce(
     kernel! = _reduce_block!(backend, block_size)
     kernel!(src_view, dst_view, op, init, ndrange=(block_size * blocks,))
 
-    # As long as we still have blocks to process, swap between the src and dst pointers at
-    # the beginning of the first and second halves of dst
     len = blocks
     if len < switch_below
         synchronize(backend)
@@ -135,6 +134,8 @@ function reduce(
         return Base.reduce(op, h_src, init=init)
     end
 
+    # As long as we still have blocks to process, swap between the src and dst pointers at
+    # the beginning of the first and second halves of dst
     p1 = @view dst[1:len]
     p2 = @view dst[blocks + 1:end]
 
@@ -157,5 +158,14 @@ function reduce(
 
     synchronize(backend)
     return @allowscalar p1[1]
+end
+
+
+function reduce(
+    op, src::AbstractVector;
+    init,
+)
+    # Fallback to Base
+    Base.reduce(op, src; init=init)
 end
 
