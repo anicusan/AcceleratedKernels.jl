@@ -1,6 +1,6 @@
 [![AcceleratedKernels.jl](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/banner.png?raw=true)](https://anicusan.github.io/AcceleratedKernels.jl)
 
-* "We need more speed" - Lightning McQueen or Scarface, I don't know *
+*"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
@@ -27,7 +27,7 @@ See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_so
 
 ![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
 
-As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter, and an order of magnitude faster than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
+As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter (x3.48 slower), and an order of magnitude faster (x10.19) than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
 ## Functions Implemented
