@@ -114,10 +114,11 @@ end
 
         # ...and accumulate the last value too
         if bi == 2 * block_size - 1
-            temp[bi + bank_offset_b + 1] = op(
-                temp[bi + bank_offset_b + 1],
-                v[(iblock + 1) * block_size * 2],
-            )
+            if iblock < num_blocks - 1
+                temp[bi + bank_offset_b + 1] = op(t2, v[(iblock + 1) * block_size * 2])
+            else
+                temp[bi + bank_offset_b + 1] = op(t2, v[len])
+            end
         end
     end
 

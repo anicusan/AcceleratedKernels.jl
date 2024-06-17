@@ -5,7 +5,7 @@ using Profile
 using PProf
 
 using KernelAbstractions
-using oneAPI
+using CUDA
 
 import AcceleratedKernels as AK
 
@@ -13,8 +13,13 @@ import AcceleratedKernels as AK
 Random.seed!(0)
 
 
+v = CUDA.ones(Int32, 100_000)
+AK.accumulate(+, v; init=0)
+
+
+
 for num_elems in 1:256
-    x = oneAPI.ones(Int32, num_elems)
+    x = CUDA.ones(Int32, num_elems)
     y = copy(x)
     AK.accumulate!(+, y; init=0, inclusive=false, block_size=128)
     yh = Array(y)
@@ -24,7 +29,7 @@ println("accumulate_small exclusive correctness checks passed")
 
 
 for num_elems in 1:256
-    x = oneArray{Int32}(rand(1:1000, num_elems))
+    x = CuArray{Int32}(rand(1:1000, num_elems))
     y = copy(x)
     AK.accumulate!(+, y; init=0, inclusive=true, block_size=128)
     yh = Array(y)
@@ -33,9 +38,9 @@ end
 println("accumulate_small inclusive correctness checks passed")
 
 
-for _ in 1:100
+for _ in 1:1000
     num_elems = rand(1:100_000)
-    x = oneAPI.ones(Int32, num_elems)
+    x = CUDA.ones(Int32, num_elems)
     y = copy(x)
     AK.accumulate!(+, y; init=0, inclusive=false, block_size=128)
     yh = Array(y)
@@ -44,9 +49,9 @@ end
 println("accumulate large exclusive correctness checks passed")
 
 
-for num_elems in 1:100
+for num_elems in 1:1000
     num_elems = rand(1:100_000)
-    x = oneArray{Int32}(rand(1:1000, num_elems))
+    x = CuArray{Int32}(rand(1:1000, num_elems))
     y = copy(x)
     AK.accumulate!(+, y; init=0, inclusive=true, block_size=128)
     yh = Array(y)

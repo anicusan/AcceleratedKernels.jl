@@ -11,6 +11,9 @@ makedocs(;
         canonical="https://anicusan.github.io/AcceleratedKernels.jl",
         edit_link="main",
         assets=String[],
+
+        # Only create web pretty-URLs on the CI
+        prettyurls = get(ENV, "CI", nothing) == "true",
     ),
     pages=[
         "Home" => "index.md",

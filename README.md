@@ -22,7 +22,12 @@ This is the very first release of this library; while tests are included for all
 AcceleratedKernels.jl will also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
 
 
-## Benchmarks
+## Benchmark
+See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_sort` for the Thrust wrapper.
+
+![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
+
+As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter, and an order of magnitude faster than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
 ## Functions Implemented
