@@ -22,7 +22,7 @@ display(@benchmark sort!($d) setup=(rand!(d)))
 
 println("AcceleratedKernels Sort:")
 temp = similar(d)
-display(@benchmark AK.merge_sort!($d, temp=temp) setup=(rand!(d)))
+display(@benchmark AK.merge_sort!($d, temp=temp, block_size=256) setup=(rand!(d)))
 
 println("BUC / CUDA Thrust Sort:")
 display(@benchmark buc_sort!($d) setup=(rand!(d)))

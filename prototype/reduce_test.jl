@@ -5,7 +5,7 @@ using Profile
 using PProf
 
 using KernelAbstractions
-using oneAPI
+using CUDA
 
 import AcceleratedKernels as AK
 
@@ -19,12 +19,12 @@ function redmin(s)
         s;
         init=typemax(eltype(s)),
         block_size=256,
-        switch_below=10_000,
+        switch_below=0,
     )
 end
 
 
-s = oneArray(shuffle(1:1_000_000))
+s = CuArray(shuffle(1:1_000_000))
 d = redmin(s)
 @assert d == 1
 println("Simple correctness check passed")

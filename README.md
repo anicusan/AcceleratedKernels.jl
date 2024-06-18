@@ -23,7 +23,7 @@ AcceleratedKernels.jl will also be a fundamental building block of applications 
 
 
 ## Benchmark
-See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_sort` for the Thrust wrapper.
+See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_sort` for the Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
 
 ![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
 

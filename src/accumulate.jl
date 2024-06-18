@@ -57,7 +57,7 @@ end
     offset = 1
     next_pow2 = block_size * 2
     d = next_pow2 >> 1
-    while d > 0
+    while d > 0             # TODO: unroll this like in reduce.jl ?
         @synchronize()
 
         if ithread < d
