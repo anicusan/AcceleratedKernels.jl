@@ -51,8 +51,8 @@ end
     @test length(tp) == tp.num_tasks
     @test tp[1] === 1:3
     @test tp[2] === 4:6
-    @test tp[3] === 7:9
-    @test tp[4] === 10:10
+    @test tp[3] === 7:8
+    @test tp[4] === 9:10
 
     # Not all tasks needed
     tp = AK.TaskPartitioner(20, 6, 5)

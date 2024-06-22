@@ -13,7 +13,7 @@ elements per task.
 # Examples
 
 ```jldoctest
-using AcceleratedKernels: TaskPartitioner
+using ImplicitBVH: TaskPartitioner
 
 # Divide 10 elements between 4 tasks
 tp = TaskPartitioner(10, 4)
@@ -44,24 +44,55 @@ tp[i] = 6:10
 tp[i] = 11:15
 tp[i] = 16:20
 ```
-
 """
 struct TaskPartitioner
     num_elems::Int
     max_tasks::Int
     min_elems::Int
-    num_tasks::Int      # computed
+
+    # Computed
+    num_tasks::Int
+    task_istarts::Vector{Int}
+
+    # Full inner constructor
+    function TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks, task_istarts)
+        new(num_elems, max_tasks, min_elems, num_tasks, task_istarts)
+    end
+
+    # Incomplete constructor, not defining the task_istarts vector in case of single task
+    function TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks)
+        num_tasks == 1 || throw(ArgumentError("incomplete constructor is only for num_tasks == 1"))
+        new(num_elems, max_tasks, min_elems, 1)
+    end
 end
 
 
 function TaskPartitioner(num_elems, max_tasks=Threads.nthreads(), min_elems=1)
-    # Number of tasks needed to have at least `min_nodes` per task
-    num_tasks = num_elems ÷ max_tasks >= min_elems ? max_tasks : num_elems ÷ min_elems
-    if num_tasks < 1
+    # Simple correctness checks
+    num_elems >= 0 || throw(ArgumentError("num_elems must be >= 0"))
+    max_tasks > 0 || throw(ArgumentError("max_tasks must be > 0"))
+    min_elems > 0 || throw(ArgumentError("min_elems must be > 0"))
+
+    # Number of tasks needed to have at least `min_elems` per task
+    num_tasks = min(max_tasks, num_elems ÷ min_elems)
+    if num_tasks <= 1
         num_tasks = 1
+        return TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks)
     end
 
-    TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks)
+    # Each task gets at least (num_elems ÷ num_tasks) elements; the remaining are redistributed
+    # among the first (num_elems % num_tasks) tasks, i.e. they get one extra element
+    per_task, remaining = divrem(num_elems, num_tasks)
+
+    # Store starting index of each task
+    task_istarts = Vector{Int}(undef, num_tasks)
+    istart = 1
+    @inbounds for i in 1:num_tasks
+        task_istarts[i] = istart
+        istart += i <= remaining ? per_task + 1 : per_task
+    end
+
+    TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks, task_istarts)
 end
 
 
@@ -69,13 +100,18 @@ function Base.getindex(tp::TaskPartitioner, itask::Integer)
 
     @boundscheck 1 <= itask <= tp.num_tasks || throw(BoundsError(tp, itask))
 
-    # Compute element indices handled by this task
-    per_task = (tp.num_elems + tp.num_tasks - 1) ÷ tp.num_tasks
+    # Special-cased for single task, in which case tp.task_istarts was not defined / allocated
+    if tp.num_tasks == 1
+        return 1:tp.num_elems
+    end
 
-    task_istart = (itask - 1) * per_task + 1
-    task_istop = min(itask * per_task, tp.num_elems)
-
-    task_istart:task_istop
+    task_istart = @inbounds tp.task_istarts[itask]
+    if itask == tp.num_tasks
+        return task_istart:tp.num_elems
+    else
+        task_istop = @inbounds tp.task_istarts[itask + 1] - 1
+        return task_istart:task_istop
+    end
 end
 
 
