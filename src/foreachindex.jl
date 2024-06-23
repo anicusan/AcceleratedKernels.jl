@@ -25,7 +25,7 @@ function foreachindex(
     itr,
     backend::CPU;
 
-    scheduler=:polyester,
+    scheduler=:threads,
     max_tasks=Threads.nthreads(),
     min_elems=1,
 )
