@@ -20,7 +20,28 @@ function foreachindex(
 end
 
 
-function foreachindex(
+function _foreachindex_polyester(f, itr, min_elems)
+    @batch minbatch=min_elems per=thread for i in eachindex(itr)
+        @inline f(i)
+    end
+end
+
+
+function _foreachindex_threads(f, itr, max_tasks, min_elems)
+    task_partition(length(itr), max_tasks, min_elems) do irange
+        # Task partition returns static ranges indexed from 1:length(itr); use those to index into
+        # eachindex, which supports arbitrary indices (and gets compiled away when using 1-based
+        # collections); each thread processes this range
+        itr_indices = eachindex(itr)
+        for i in irange
+            @inbounds itr_index = itr_indices[i]
+            @inline f(itr_index)
+        end
+    end
+end
+
+
+@inline function foreachindex(
     f,
     itr,
     backend::CPU;
@@ -31,17 +52,9 @@ function foreachindex(
 )
     # CPU implementation
     if scheduler === :threads
-        task_partition(length(itr), max_tasks, min_elems) do irange
-            itr_indices = eachindex(itr)
-            for i in irange
-                @inbounds itr_index = itr_indices[i]
-                @inline f(itr_index)
-            end
-        end
+        _foreachindex_threads(f, itr, max_tasks, min_elems)
     elseif scheduler === :polyester
-        @batch minbatch=min_elems per=thread for i in eachindex(itr)
-            @inline f(i)
-        end
+        _foreachindex_polyester(f, itr, min_elems)
     else
         throw(ArgumentError("`scheduler` must be `:threads` or `:polyester`. Received $scheduler"))
     end
@@ -52,7 +65,7 @@ end
 
 """
     foreachindex(f, itr, [backend::GPU]; block_size::Int=256)
-    foreachindex(f, itr, [backend::CPU]; scheduler=:polyester, max_tasks=Threads.nthreads(), min_elems=1)
+    foreachindex(f, itr, [backend::CPU]; scheduler=:threads, max_tasks=Threads.nthreads(), min_elems=1)
     foreachindex(f, itr, backend=get_backend(itr); kwargs...)
 
 Parallelised `for` loop over the indices of an iterable.

@@ -172,7 +172,7 @@ function merge_sort!(
         end
 
         if isodd(niter)
-            v .= p1
+            copyto!(v, p1)
         end
     end
 

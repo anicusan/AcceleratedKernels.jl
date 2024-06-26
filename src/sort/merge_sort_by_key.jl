@@ -212,8 +212,8 @@ function merge_sort_by_key!(
         end
 
         if isodd(niter)
-            keys .= pk1
-            values .= pv1
+            copyto!(keys, pk1)
+            copyto!(values, pv1)
         end
     end
 

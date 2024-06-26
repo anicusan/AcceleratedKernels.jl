@@ -120,7 +120,7 @@ function merge_sortperm_lowmem!(
         end
 
         if isodd(niter)
-            ix .= p1
+            copyto!(ix, p1)
         end
     end
 

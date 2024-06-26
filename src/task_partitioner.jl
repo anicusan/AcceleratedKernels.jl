@@ -147,25 +147,36 @@ end
 ```
 """
 function task_partition(f, num_elems, max_tasks=Threads.nthreads(), min_elems=1)
-    tp = TaskPartitioner(num_elems, max_tasks, min_elems)
-    if tp.num_tasks == 1
-        f(1:num_elems)
+    num_elems >= 0 || throw(ArgumentError("num_elems must be >= 0"))
+    max_tasks > 0 || throw(ArgumentError("max_tasks must be > 0"))
+    min_elems > 0 || throw(ArgumentError("min_elems must be > 0"))
+
+    if min(max_tasks, num_elems ÷ min_elems) <= 1
+        @inline f(1:num_elems)
     else
-        tasks = Vector{Task}(undef, tp.num_tasks - 1)
-
-        # Launch first N - 1 tasks
-        @inbounds for i in 1:tp.num_tasks - 1
-            tasks[i] = Threads.@spawn f(tp[i])
-        end
-
-        # Execute task N on this main thread
-        @inbounds f(tp[tp.num_tasks])
-
-        # Wait for the tasks to finish
-        @inbounds for i in 1:tp.num_tasks - 1
-            wait(tasks[i])
-        end
+        # Compiler should decide if this should be inlined; threading adds quite a bit of code, it
+        # is faster (as seen in Cthulhu) to keep it in a separate self-contained function
+        _task_partition_threads(f, num_elems, max_tasks, min_elems)
     end
     nothing
+end
+
+
+function _task_partition_threads(f, num_elems, max_tasks, min_elems)
+    tp = TaskPartitioner(num_elems, max_tasks, min_elems)
+    tasks = Vector{Task}(undef, tp.num_tasks - 1)
+
+    # Launch first N - 1 tasks
+    @inbounds for i in 1:tp.num_tasks - 1
+        tasks[i] = Threads.@spawn f(tp[i])
+    end
+
+    # Execute task N on this main thread
+    @inbounds f(tp[tp.num_tasks])
+
+    # Wait for the tasks to finish
+    @inbounds for i in 1:tp.num_tasks - 1
+        wait(tasks[i])
+    end
 end
 
