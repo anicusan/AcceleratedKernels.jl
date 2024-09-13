@@ -65,19 +65,19 @@ In the figure above, "CC-JB" uses the Julia Base sorter with MPI communication; 
 Below is an overview of the currently-implemented algorithms, along with some common names in other libraries for ease of finding / understanding / porting code. If you need other algorithms in your work that may be of general use, please open an issue and we may implement it, help you implement it, or integrate existing code into AcceleratedKernels.jl. See API Examples below for usage.
 
 
-| Function Family | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
-| --------------- | ------------------------------------------------ | --------------------------------------------------------- |
-| General looping | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
-| Sorting         | `merge_sort` `merge_sort!`                       | `sort` `sort_team` `stable_sort`                          |
-|                 | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
-|                 | `merge_sortperm` `merge_sortperm!`               | `sort_permutation` `index_permutation`                    |
-|                 | `merge_sortperm_lowmem` `merge_sortperm_lowmem!` |                                                           |
-| Reduction       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
-| MapReduce       | `mapreduce`                                      | `transform_reduce` `fold`                                 |
-| Accumulation    | `accumulate` `accumulate!`                       | `prefix_sum` `thrust::scan` `cumsum`                      |
-| Binary Search   | `searchsortedfirst` `searchsortedfirst!`         | `std::lower_bound`                                        |
-|                 | `searchsortedlast` `searchsortedlast!`           | `thrust::upper_bound`                                     |
-| Predicates      | `all` `any`                                      |                                                           |
+| Function Family                               | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
+| --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| [General Looping](#52-foreachindex)           | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
+| [Sorting](#53-merge_sort-and-friends)         | `merge_sort` `merge_sort!`                       | `sort` `sort_team` `stable_sort`                          |
+|                                               | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
+|                                               | `merge_sortperm` `merge_sortperm!`               | `sort_permutation` `index_permutation`                    |
+|                                               | `merge_sortperm_lowmem` `merge_sortperm_lowmem!` |                                                           |
+| [Reduction](#54-reduce)                       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
+| [MapReduce](#55-mapreduce)                    | `mapreduce`                                      | `transform_reduce` `fold`                                 |
+| [Accumulation](#56-accumulate)                | `accumulate` `accumulate!`                       | `prefix_sum` `thrust::scan` `cumsum`                      |
+| [Binary Search](#57-searchsorted-and-friends) | `searchsortedfirst` `searchsortedfirst!`         | `std::lower_bound`                                        |
+|                                               | `searchsortedlast` `searchsortedlast!`           | `thrust::upper_bound`                                     |
+| [Predicates](#58-all--any)                    | `all` `any`                                      |                                                           |
 
 
 ## 5. API Examples
@@ -267,14 +267,14 @@ v = CuArray{Int16}(rand(1:1000, 100_000))
 reduce((x, y) -> x + y, v; init=0)
 ```
 
-In a reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elemnts to the CPU and finish there (in a reduction we have to do a device-to-host transfer anyways for the final result); `switch_below` may be worth using (benchmark!) - here computing a minimum with the reduction operator defined in a Julia `do` block:
+In a reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there (in a reduction we have to do a device-to-host transfer anyways for the final result); `switch_below` may be worth using (benchmark!) - here computing a minimum with the reduction operator defined in a Julia `do` block:
 ```julia
 reduce(v; init=typemax(eltype(v)), switch_below=100) do x, y
     x < y ? x : y
 end
 ```
 
-Yes, the lamda within the `do` block can equally well be executed on both CPU and GPU, no code changes/duplication required.
+Yes, the lambda within the `do` block can equally well be executed on both CPU and GPU, no code changes/duplication required.
 
 
 ### 5.5. `mapreduce`
