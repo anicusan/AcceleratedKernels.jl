@@ -10,19 +10,42 @@
 Parallel algorithm building blocks for the Julia ecosystem, targeting multithreaded CPUs, and GPUs via Intel oneAPI, AMD ROCm, Apple Metal and Nvidia CUDA (and any future backends added to the [JuliaGPU](https://juliagpu.org/) organisation).
 
 
-## What's Different?
-As far as I am aware, this is the first cross-architecture parallel standard library *from a unified codebase* - that is, the code is written as [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) backend-agnostic kernels, which are then transpiled to a GPU backend; that means we benefit from all the optimisations available on the native platform. For example, unlike open standards like OpenCL that require GPU vendors to implement that API for their hardware, we target the existing official compilers. And while performance-portability libraries like [Kokkos](https://github.com/kokkos/kokkos) and [RAJA](https://github.com/LLNL/RAJA) are powerful for large C++ codebases, they require US National Lab-level development and maintenance efforts to forward calls from a single API to other OpenMP, CUDA Thrust, ROCm rocThrust, oneAPI DPC++ libraries developed separately. In comparison, this library was developed effectively in a week by a single person because developing packages in Julia is just a joy.
+- [1. What's Different?](#1-whats-different)
+- [2. Status](#2-status)
+- [3. Benchmarks](#3-benchmarks)
+- [4. Functions Implemented](#4-functions-implemented)
+- [5. API Examples](#5-api-examples)
+  - [5.1. Using Different Backends](#51-using-different-backends)
+  - [5.2. `foreachindex`](#52-foreachindex)
+  - [5.3. `merge_sort` and friends](#53-merge_sort-and-friends)
+  - [5.4. `reduce`](#54-reduce)
+  - [5.5. `mapreduce`](#55-mapreduce)
+  - [5.6. `accumulate`](#56-accumulate)
+  - [5.7. `searchsorted` and friends](#57-searchsorted-and-friends)
+  - [5.8. `all` / `any`](#58-all--any)
+- [6. Custom Structs](#6-custom-structs)
+- [7. Testing](#7-testing)
+- [8. Issues and Debugging](#8-issues-and-debugging)
+- [9. Roadmap / Future Plans](#9-roadmap--future-plans)
+- [10. References](#10-references)
+- [11. Acknowledgements](#11-acknowledgements)
+- [12. License](#12-license)
+
+
+
+## 1. What's Different?
+As far as I am aware, this is the first cross-architecture parallel standard library *from a unified codebase* - that is, the code is written as [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) backend-agnostic kernels, which are then **transpiled** to a GPU backend; that means we benefit from all the optimisations available on the native platform and official compiler stacks. For example, unlike open standards like OpenCL that require GPU vendors to implement that API for their hardware, we target the existing official compilers. And while performance-portability libraries like [Kokkos](https://github.com/kokkos/kokkos) and [RAJA](https://github.com/LLNL/RAJA) are powerful for large C++ codebases, they require US National Lab-level development and maintenance efforts to effectively forward calls from a single API to other OpenMP, CUDA Thrust, ROCm rocThrust, oneAPI DPC++ libraries developed separately. In comparison, this library was developed effectively in a week by a single person because developing packages in Julia is just a joy.
 
 Again, this is only possible because of the unique Julia compilation model, the [JuliaGPU](https://juliagpu.org/) organisation work for reusable GPU backend infrastructure, and especially the [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) backend-agnostic kernel language. Thank you.
 
 
-## Status
+## 2. Status
 This is the very first release of this library; while tests are included for all algorithms, I only ran them locally on the oneAPI (Intel UHD Graphics 620), CUDA (Nvidia Quadro RTX 4000), and Metal (Mac M2) backends. Some kinks might still exist for some platforms before a CI is set up. The API may undergo some changes in the following weeks as we discuss it with the Julia community - please join the conversation!
 
 AcceleratedKernels.jl will also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
 
 
-## Benchmark
+## 3. Benchmarks
 See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_sort` for the Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
 
 ![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
@@ -30,52 +53,39 @@ See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_so
 As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter (x3.48 slower), and an order of magnitude faster (x10.19) than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
-## Functions Implemented
+The sorting algorithms can also be combined with [`MPISort.jl`](https://github.com/anicusan/MPISort.jl) for multi-*device* sorting - indeed, you can co-operatively sort using **both** your CPU and GPU! Or use 200 GPUs on the 52 nodes of [Baskerville HPC](https://www.baskerville.ac.uk/) to sort ~800 GB of data per second:
+
+![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_throughput.png?raw=true)
+
+In the figure above, "CC-JB" uses the Julia Base sorter with MPI communication; "GC-\*" represents a GPU sorting algorithm with MPI communication over CPU RAM (i.e. no GPUDirect interconnects; it incurs a transfer from GPU to host CPU for each MPI transfer); "GG-\*" stands for a GPU algorithm with direct GPU-to-GPU memory transfer over MPI (i.e. fancy GPUDirect interconnects). "AK" is the AcceleratedKernels.jl `merge_sort!` algorithm, "TM" is the CUDA Thrust merge sort, "TR" is the CUDA Thrust radix sort. Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/).
+
+
+## 4. Functions Implemented
 
 Below is an overview of the currently-implemented algorithms, along with some common names in other libraries for ease of finding / understanding / porting code. If you need other algorithms in your work that may be of general use, please open an issue and we may implement it, help you implement it, or integrate existing code into AcceleratedKernels.jl. See API Examples below for usage.
 
-#### `foreachindex`
-Parallelised for-loop over the indices of an iterable; converts normal Julia code to GPU kernels running one thread per index. On CPUs it executes static index ranges on `max_tasks` threads, with user-defined `min_elems` to be processed by each thread; if only a single thread ends up being needed, the loop is inlined and executed without spawning threads.
-- **Other names**: `Kokkos::parallel_for`, `RAJA::forall`, `thrust::transform`.
 
-#### `merge_sort` and friends
-- `merge_sort!` (in-place), `merge_sort` (out-of-place) - sort arbitrary objects with custom comparisons.
-- `merge_sort_by_key!`, `merge_sort_by_key` - sort a vector of keys along with a "payload", a vector of corresponding values.
-- `merge_sortperm!`, `merge_sortperm`, `merge_sortperm_lowmem!`, `merge_sortperm_lowmem` - compute a sorting index permutation. 
-- **Other names**: `sort`, `sort_team`, `sort_team_by_key`, `stable_sort` or variations in Kokkos, RAJA, Thrust that I know of.
-
-#### `reduce`
-Apply a custom binary operator reduction on all elements in an iterable; can be used to compute minima, sums, counts, etc.
-- **Other names**: `Kokkos:parallel_reduce`, `fold`, `aggregate`.
-
-#### `mapreduce`
-Equivalent to `reduce(op, map(f, iterable))`, without saving the intermediate mapped collection; can be used to e.g. split documents into words (map) and count the frequency thereof (reduce).
-- **Other names**: `transform_reduce`, some `fold` implementations include the mapping function too.
-
-#### `accumulate`
-Compute accumulated running totals along a sequence by applying a binary operator to all elements up to the current one; often used in GPU programming as a first step in finding / extracting subsets of data.
-- `accumulate!` (in-place), `accumulate` (allocating); inclusive or exclusive.
-- **Other names**: prefix sum, `thrust::scan`, cumulative sum; inclusive (or exclusive) if the first element is included in the accumulation (or not).
-
-#### `searchsorted` and friends
-Find the indices where some elements `x` should be inserted into a sorted sequence `v` to maintain the sorted order. Effectively applying the Julia.Base functions in parallel on a GPU using `foreachindex`.
-- `searchsortedfirst!` (in-place), `searchsortedfirst` (allocating): index of first element in `v` >= `x[j]`.
-- `searchsortedlast!`, `searchsortedlast`: index of last element in `v` <= `x[j]`.
-- **Other names**: `thrust::upper_bound`, `std::lower_bound`.
-
-#### `all` / `any`
-Apply a predicate to check if all / any elements in a collection return true. Could be implemented as a reduction, but is better optimised with stopping the search once a false / true is found.
-- **Other names**: not often implemented standalone on GPUs, typically included as part of a reduction.
+| Function Family | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
+| --------------- | ------------------------------------------------ | --------------------------------------------------------- |
+| General looping | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
+| Sorting         | `merge_sort` `merge_sort!`                       | `sort` `sort_team` `stable_sort`                          |
+|                 | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
+|                 | `merge_sortperm` `merge_sortperm!`               | `sort_permutation` `index_permutation`                    |
+|                 | `merge_sortperm_lowmem` `merge_sortperm_lowmem!` |                                                           |
+| Reduction       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
+| MapReduce       | `mapreduce`                                      | `transform_reduce` `fold`                                 |
+| Accumulation    | `accumulate` `accumulate!`                       | `prefix_sum` `thrust::scan` `cumsum`                      |
+| Binary Search   | `searchsortedfirst` `searchsortedfirst!`         | `std::lower_bound`                                        |
+|                 | `searchsortedlast` `searchsortedlast!`           | `thrust::upper_bound`                                     |
+| Predicates      | `all` `any`                                      |                                                           |
 
 
-
-
-## API Examples
+## 5. API Examples
 
 Here are simple examples using the AcceleratedKernels.jl algorithms to help you get started with it quickly; more details on the function arguments are given in the Manual [TODO link].
 
 
-#### Using Different Backends
+### 5.1. Using Different Backends
 For any of the examples below, simply use a different GPU array and AcceleratedKernels.jl will pick the right backend:
 ```julia
 # Intel Graphics
@@ -99,7 +109,52 @@ v_host = Array(v)
 ```
 
 
-#### `foreachindex`
+### 5.2. `foreachindex`
+General workhorse for converting normal Julia `for` loops into GPU code, for example:
+
+<table>
+<tr>
+<th>CPU Code</th>
+<th>GPU code</th>
+</tr>
+
+<tr>
+<td>
+
+```julia
+
+
+function cpu_copy!(dst, src)
+    for i in eachindex(src)
+        dst[i] = src[i]
+    end
+end
+```
+
+</td>
+
+<td>
+
+```julia
+import AcceleratedKernels as AK
+
+function gpu_copy!(dst, src)
+    AK.foreachindex(src) do i
+        dst[i] = src[i]
+    end
+end
+```
+
+</td>
+
+</tr>
+</table>
+
+Yes, simply change `for i in eachindex(itr)` into `AK.foreachindex(itr) do i` - magic! (or just incredible language design)
+
+This is a parallelised for-loop over the indices of an iterable; converts normal Julia code to GPU kernels running one thread per index. On CPUs it executes static index ranges on `max_tasks` threads, with user-defined `min_elems` to be processed by each thread; if only a single thread ends up being needed, the loop is inlined and executed without spawning threads.
+- **Other names**: `Kokkos::parallel_for`, `RAJA::forall`, `thrust::transform`.
+
 Function signature:
 ```julia
 foreachindex(f, itr, [backend::GPU]; block_size::Int=256)
@@ -144,7 +199,13 @@ Similarly, for performance on the CPU the overhead of spawning threads should be
 @time AK.foreachindex(f, itr_cpu, max_tasks=16, min_elems=1000)
 ```
 
-#### `merge_sort`
+
+### 5.3. `merge_sort` and friends
+- `merge_sort!` (in-place), `merge_sort` (out-of-place) - sort arbitrary objects with custom comparisons.
+- `merge_sort_by_key!`, `merge_sort_by_key` - sort a vector of keys along with a "payload", a vector of corresponding values.
+- `merge_sortperm!`, `merge_sortperm`, `merge_sortperm_lowmem!`, `merge_sortperm_lowmem` - compute a sorting index permutation. 
+- **Other names**: `sort`, `sort_team`, `sort_team_by_key`, `stable_sort` or variations in Kokkos, RAJA, Thrust that I know of.
+
 Function signature:
 ```julia
 merge_sort!(v::AbstractGPUVector;
@@ -185,7 +246,11 @@ temp = similar(v)
 merge_sort!(v, temp=temp)
 ```
 
-#### `reduce`
+
+### 5.4. `reduce`
+Apply a custom binary operator reduction on all elements in an iterable; can be used to compute minima, sums, counts, etc.
+- **Other names**: `Kokkos:parallel_reduce`, `fold`, `aggregate`.
+
 Function signature:
 ```julia
 reduce(op, src::AbstractGPUVector; init,
@@ -209,7 +274,13 @@ reduce(v; init=typemax(eltype(v)), switch_below=100) do x, y
 end
 ```
 
-#### `mapreduce`
+Yes, the lamda within the `do` block can equally well be executed on both CPU and GPU, no code changes/duplication required.
+
+
+### 5.5. `mapreduce`
+Equivalent to `reduce(op, map(f, iterable))`, without saving the intermediate mapped collection; can be used to e.g. split documents into words (map) and count the frequency thereof (reduce).
+- **Other names**: `transform_reduce`, some `fold` implementations include the mapping function too.
+
 Function signature:
 ```julia
 mapreduce(f, op, src::AbstractGPUVector; init,
@@ -228,7 +299,12 @@ mapreduce(abs, (x, y) -> x < y ? x : y, v, init=typemax(Int32))
 
 As for `reduce`, when there are fewer than `switch_below` elements left to reduce, they can be copied back to the host and we switch to a CPU reduction. The `init` initialiser has to be a neutral element for `op`, i.e. same type as returned from `f` (`f` can change the type of the collection, see the "Custom Structs" section below for an example). The temporary array `temp` needs to have at least `(length(src) + 2 * block_size - 1) ÷ (2 * block_size)` elements and have `eltype(src) === typeof(init)`.
 
-#### `accumulate`
+
+### 5.6. `accumulate`
+Compute accumulated running totals along a sequence by applying a binary operator to all elements up to the current one; often used in GPU programming as a first step in finding / extracting subsets of data.
+- `accumulate!` (in-place), `accumulate` (allocating); inclusive or exclusive.
+- **Other names**: prefix sum, `thrust::scan`, cumulative sum; inclusive (or exclusive) if the first element is included in the accumulation (or not).
+
 Function signature:
 ```julia
 accumulate!(op, v::AbstractGPUVector; init, inclusive::Bool=true,
@@ -252,7 +328,13 @@ accumulate!(+, v, init=0)
 
 The temporaries `temp_v` and `temp_flags` should both have at least `(length(v) + 2 * block_size - 1) ÷ (2 * block_size)` elements; `eltype(v) === eltype(temp_v)`; the elements in `temp_flags` can be any integers, but `Int8` is used by default to reduce memory usage. 
 
-#### `searchsorted`
+
+### 5.7. `searchsorted` and friends
+Find the indices where some elements `x` should be inserted into a sorted sequence `v` to maintain the sorted order. Effectively applying the Julia.Base functions in parallel on a GPU using `foreachindex`.
+- `searchsortedfirst!` (in-place), `searchsortedfirst` (allocating): index of first element in `v` >= `x[j]`.
+- `searchsortedlast!`, `searchsortedlast`: index of last element in `v` <= `x[j]`.
+- **Other names**: `thrust::upper_bound`, `std::lower_bound`.
+
 Function signature:
 ```julia
 # GPU
@@ -300,7 +382,11 @@ ix = MtlArray{Int}(undef, 10_000)
 AK.searchsortedfirst!(ix, v, x)
 ```
 
-#### `all` / `any`
+
+### 5.8. `all` / `any`
+Apply a predicate to check if all / any elements in a collection return true. Could be implemented as a reduction, but is better optimised with stopping the search once a false / true is found.
+- **Other names**: not often implemented standalone on GPUs, typically included as part of a reduction.
+
 Function signature:
 ```julia
 any(pred, v::AbstractGPUVector;
@@ -320,7 +406,7 @@ AK.all(x -> x > 0, v)
 ```
 
 
-## Custom Structs
+## 6. Custom Structs
 As functions are compiled as/when used in Julia for the given argument types (for C++ people: kind of like everything being a template argument by default), we can use custom structs and functions defined outside AcceleratedKernels.jl, which will be inlined and optimised as if they were hardcoded within the library. Normal Julia functions and code can be used, without special annotations like `__device__`, `KOKKOS_LAMBDA` or wrapping them in classes with overloaded `operator()`.
 
 As an example, let's compute the coordinate-wise minima of some points:
@@ -351,7 +437,7 @@ points = MtlArray([Point(rand(), rand()) for _ in 1:100_000])
 Note that we did not have to explicitly type the function arguments in `compute_minima` - the types would be figured out when calling the function and compiled for the right backend automatically, e.g. CPU, oneAPI, ROCm, CUDA, Metal. Also, we used the standard Julia function `min`; it was not special-cased anywhere, it's just KernelAbstractions.jl inlining and compiling normal code, even from within the Julia.Base standard library.
 
 
-## Testing
+## 7. Testing
 If it ain't tested, it's broken. The `test/runtests.jl` suite does randomised correctness testing on all algorithms in the library. To test locally, execute:
 ```bash
 path/to/KernelAbstractions.jl> julia --project=. -e 'import Pkg; Pkg.test(test_args=["--oneAPI"])'
@@ -362,7 +448,7 @@ Replace the `"--oneAPI"` with `"--CUDA"`, `"--AMDGPU"` or `"--Metal"` to test di
 **TODO**: talk with the JuliaGPU team to add library to their [BuildKite agents](https://github.com/JuliaGPU/buildkite) CI.
 
 
-## Issues and Debugging
+## 8. Issues and Debugging
 As the compilation pipeline of GPU kernels is different to that of base Julia, error messages also look different - for example, where Julia would insert an exception when a variable name was not defined (e.g. we had a typo), a GPU kernel throwing exceptions cannot be compiled and instead you'll see some cascading errors like `"[...] compiling [...] resulted in invalid LLVM IR"` caused by `"Reason: unsupported use of an undefined name"` resulting in `"Reason: unsupported dynamic function invocation"`, etc.
 
 Thankfully, there are only about 3 types of such error messages and they're not that scary when you look into them. See the Manual section on debugging [TODO: add link] for examples and explanations.
@@ -370,7 +456,7 @@ Thankfully, there are only about 3 types of such error messages and they're not 
 For other library-related problems, feel free to post a GitHub issue. For help implementing new code, or just advice, you can also use the [Julia Discourse](https://discourse.julialang.org/c/domain/gpu/11) forum, the community is incredibly helpful.
 
 
-## Roadmap / Future Plans
+## 9. Roadmap / Future Plans
 - Discuss interface with community, see if there is any algorithm we should export by default.
 - Automated optimisation of e.g. `block_size` for a given input; can be made algorithm-agnostic.
 - Should we add CPU alternatives to all algorithms? E.g. `foreachindex` has one, `any` does not.
@@ -382,7 +468,7 @@ For other library-related problems, feel free to post a GitHub issue. For help i
 - **Other ideas?** Post an issue. Or maybe the Julia Slack #gpu discussion.
 
 
-## References
+## 10. References
 This library is built on the unique Julia infrastructure for transpiling code to GPU backends, and years spent developing the [JuliaGPU](https://juliagpu.org/) ecosystem that make it a joy to use. In particular, credit should go to the following people and work:
 - The Julia language design, which made code manipulation and generation a first class citizen: Bezanson J, Edelman A, Karpinski S, Shah VB. Julia: A fresh approach to numerical computing. SIAM review. 2017.
 - The GPU compiler infrastructure built on top of Julia's unique compilation model: Besard T, Foket C, De Sutter B. Effective extensible programming: unleashing Julia on GPUs. IEEE Transactions on Parallel and Distributed Systems. 2018.
@@ -405,9 +491,9 @@ While the algorithms themselves were implemented anew, multiple existing librari
 - Metal performance shaders: https://developer.apple.com/documentation/metalperformanceshaders
 
 
-## Acknowledgements
+## 11. Acknowledgements
 Much of this work was possible because of the fantastic HPC resources at the University of Birmingham and the Birmingham Environment for Academic Research, which gave us free on-demand access to thousands of CPUs and GPUs that we experimented on, and the support teams we nagged. In particular, thank you to Kit Windows-Yule and Andrew Morris on the BlueBEAR and Baskerville T2 supercomputers' leadership, and Simon Branford, Simon Hartley, James Allsopp and James Carpenter for computing support.
 
 
-## License
+## 12. License
 AcceleratedKernels.jl is MIT-licensed. Enjoy.
