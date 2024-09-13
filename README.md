@@ -122,7 +122,7 @@ General workhorse for converting normal Julia `for` loops into GPU code, for exa
 <td>
 
 ```julia
-
+# Copy kernel testing throughput
 
 function cpu_copy!(dst, src)
     for i in eachindex(src)
@@ -150,7 +150,7 @@ end
 </tr>
 </table>
 
-Yes, simply change `for i in eachindex(itr)` into `AK.foreachindex(itr) do i` - magic! (or just incredible language design)
+Yes, simply change `for i in eachindex(itr)` into `AK.foreachindex(itr) do i` to run it on GPUs / multithreaded - magic! (or just amazing language design)
 
 This is a parallelised for-loop over the indices of an iterable; converts normal Julia code to GPU kernels running one thread per index. On CPUs it executes static index ranges on `max_tasks` threads, with user-defined `min_elems` to be processed by each thread; if only a single thread ends up being needed, the loop is inlined and executed without spawning threads.
 - **Other names**: `Kokkos::parallel_for`, `RAJA::forall`, `thrust::transform`.
