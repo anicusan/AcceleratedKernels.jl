@@ -2,8 +2,8 @@
 
 *"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
+<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/) -->
+<!-- [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/) -->
 <!-- [![Build Status](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml?query=branch%3Amain) -->
 
 
@@ -40,24 +40,28 @@ Again, this is only possible because of the unique Julia compilation model, the 
 
 
 ## 2. Status
-This is the very first release of this library; while tests are included for all algorithms, I only ran them locally on the oneAPI (Intel UHD Graphics 620), CUDA (Nvidia Quadro RTX 4000), and Metal (Mac M2) backends. Some kinks might still exist for some platforms before a CI is set up. The API may undergo some changes in the following weeks as we discuss it with the Julia community - please join the conversation!
+This is the very first release of this library; while tests are included for all algorithms, I only ran them locally on the oneAPI (laptop Intel UHD Graphics 620), CUDA (laptop with Nvidia Quadro RTX 4000 and data centre Nvidia A100-40), Metal (Mac M2 and M3), and AMD (data centre AMD MI210) backends. Some kinks might still exist for some platform permutations before a CI is set up. The API may undergo some changes in the following weeks as we discuss it with the Julia community - please join the conversation!
 
 AcceleratedKernels.jl will also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
 
 
 ## 3. Benchmarks
-See `protoype/sort_benchmark.jl` for the benchmark code and `prototype/thrust_sort` for the Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
+Some arithmetic-heavy benchmarks are given below - see [this repository](https://github.com/anicusan/AcceleratedKernels-Benchmark) for the code; our paper will be linked here upon publishing with a full analysis.
+
+![Arithmetic benchmark](https://github.com/anicusan/AcceleratedKernels-Benchmark/blob/main/ArithmeticBenchmark/ArithmeticBenchmarkTable.png?raw=true)
+
+See `protoype/sort_benchmark.jl` for a small-scale sorting benchmark code and `prototype/thrust_sort` for the Nvidia Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
 
 ![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
 
 As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter (x3.48 slower), and an order of magnitude faster (x10.19) than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
-The sorting algorithms can also be combined with [`MPISort.jl`](https://github.com/anicusan/MPISort.jl) for multi-*device* sorting - indeed, you can co-operatively sort using **both** your CPU and GPU! Or use 200 GPUs on the 52 nodes of [Baskerville HPC](https://www.baskerville.ac.uk/) to sort ~800 GB of data per second:
+The sorting algorithms can also be combined with [`MPISort.jl`](https://github.com/anicusan/MPISort.jl) for multi-*device* sorting - indeed, you can co-operatively sort using **both** your CPU and GPU! Or use 200 GPUs on the 52 nodes of [Baskerville HPC](https://www.baskerville.ac.uk/) to sort 538-855 GB of data per second (comparable with the highest figure reported in literature of [900 GB/s on 262,144 CPU cores](http://dx.doi.org/10.1145/2464996.2465442)):
 
 ![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_throughput.png?raw=true)
 
-In the figure above, "CC-JB" uses the Julia Base sorter with MPI communication; "GC-\*" represents a GPU sorting algorithm with MPI communication over CPU RAM (i.e. no GPUDirect interconnects; it incurs a transfer from GPU to host CPU for each MPI transfer); "GG-\*" stands for a GPU algorithm with direct GPU-to-GPU memory transfer over MPI (i.e. fancy GPUDirect interconnects). "AK" is the AcceleratedKernels.jl `merge_sort!` algorithm, "TM" is the CUDA Thrust merge sort, "TR" is the CUDA Thrust radix sort. Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/).
+In the figure above, "CC-JB" uses the Julia Base sorter with MPI communication; "GC-\*" represents a GPU sorting algorithm with MPI communication over CPU RAM (i.e. no GPUDirect interconnects; it incurs a transfer from GPU to host CPU for each MPI transfer); "GG-\*" stands for a GPU algorithm with direct GPU-to-GPU memory transfer over MPI (i.e. fancy GPUDirect interconnects). "AK" is the AcceleratedKernels.jl `merge_sort!` algorithm, "TM" is the CUDA Thrust merge sort, "TR" is the CUDA Thrust radix sort. Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/). Full analysis will be linked here once our paper is published.
 
 
 ## 4. Functions Implemented
