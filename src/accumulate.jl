@@ -192,7 +192,9 @@ end
     end
 
     # Set flag for "aggregate of all prefixes up to this block finished"
-    @synchronize()      # This is needed so that the flag is not set before copying into v
+    @synchronize()      # This is needed so that the flag is not set before copying into v, but
+                        # there should be better memory fences to guarantee ordering without
+                        # thread synchronization...
     if ithread == 0
         flags[iblock + 1] = ACC_FLAG_A
     end
@@ -206,31 +208,31 @@ function accumulate!(
     inclusive::Bool=true,
 
     block_size::Int=128,
-    temp_v::Union{Nothing, AbstractGPUVector}=nothing,
+    temp::Union{Nothing, AbstractGPUVector}=nothing,
     temp_flags::Union{Nothing, AbstractGPUVector}=nothing,
 )
 
     # Correctness checks
-    @assert block_size > 0
-    @assert ispow2(block_size)
+    @argcheck block_size > 0
+    @argcheck ispow2(block_size)
 
     # Each thread will process two elements
     elems_per_block = block_size * 2
     num_blocks = (length(v) + elems_per_block - 1) ÷ elems_per_block
 
-    if isnothing(temp_v)
+    if isnothing(temp)
         prefixes = similar(v, eltype(v), num_blocks)
     else
-        @assert eltype(temp_v) === eltype(v)
-        @assert length(temp_v) >= num_blocks
-        prefixes = temp_v
+        @argcheck eltype(temp) === eltype(v)
+        @argcheck length(temp) >= num_blocks
+        prefixes = temp
     end
 
     if isnothing(temp_flags)
         flags = similar(v, Int8, num_blocks)
     else
-        @assert eltype(temp_flags) <: Integer
-        @assert length(temp_flags) >= num_blocks
+        @argcheck eltype(temp_flags) <: Integer
+        @argcheck length(temp_flags) >= num_blocks
         flags = temp_flags
     end
 
@@ -256,12 +258,12 @@ function accumulate(
     inclusive::Bool=true,
 
     block_size::Int=128,
-    temp_v::Union{Nothing, AbstractGPUVector}=nothing,
+    temp::Union{Nothing, AbstractGPUVector}=nothing,
     temp_flags::Union{Nothing, AbstractGPUVector}=nothing,
 )
     vcopy = copy(v)
     accumulate!(op, vcopy; init=init, inclusive=inclusive,
-                block_size=block_size, temp_v=temp_v, temp_flags=temp_flags)
+                block_size=block_size, temp=temp, temp_flags=temp_flags)
     vcopy
 end
 

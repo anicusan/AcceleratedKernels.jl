@@ -13,7 +13,7 @@ function foreachindex(
     block_size::Int=256,
 )
     # GPU implementation
-    @assert block_size > 0
+    @argcheck block_size > 0
     _foreachindex_global!(backend, block_size)(f, eachindex(itr), ndrange=length(itr))
     synchronize(backend)
     nothing
@@ -131,7 +131,7 @@ somecopy!(x)    # This works
 ```
 """
 function foreachindex(f, itr, backend=get_backend(itr); kwargs...)
-    @assert backend isa Backend     # To avoid calling this function recursively
+    @argcheck backend isa Backend               # To avoid calling this function recursively
     foreachindex(f, itr, backend; kwargs...)
 end
 

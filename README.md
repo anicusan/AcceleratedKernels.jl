@@ -17,7 +17,7 @@ Parallel algorithm building blocks for the Julia ecosystem, targeting multithrea
 - [5. API Examples](#5-api-examples)
   - [5.1. Using Different Backends](#51-using-different-backends)
   - [5.2. `foreachindex`](#52-foreachindex)
-  - [5.3. `merge_sort` and friends](#53-merge_sort-and-friends)
+  - [5.3. `sort` and friends](#53-sort-and-friends)
   - [5.4. `reduce`](#54-reduce)
   - [5.5. `mapreduce`](#55-mapreduce)
   - [5.6. `accumulate`](#56-accumulate)
@@ -72,9 +72,11 @@ Below is an overview of the currently-implemented algorithms, along with some co
 | Function Family                               | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
 | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
 | [General Looping](#52-foreachindex)           | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
-| [Sorting](#53-merge_sort-and-friends)         | `merge_sort` `merge_sort!`                       | `sort` `sort_team` `stable_sort`                          |
+| [Sorting](#53-sort-and-friends)               | `sort` `sort!`                                   | `sort` `sort_team` `stable_sort`                          |
+|                                               | `merge_sort` `merge_sort!`                       |                                                           |
 |                                               | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
-|                                               | `merge_sortperm` `merge_sortperm!`               | `sort_permutation` `index_permutation`                    |
+|                                               | `sortperm` `sortperm!`                           | `sort_permutation` `index_permutation`                    |
+|                                               | `merge_sortperm` `merge_sortperm!`               |                                                           |
 |                                               | `merge_sortperm_lowmem` `merge_sortperm_lowmem!` |                                                           |
 | [Reduction](#54-reduce)                       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
 | [MapReduce](#55-mapreduce)                    | `mapreduce`                                      | `transform_reduce` `fold`                                 |
@@ -204,11 +206,27 @@ Similarly, for performance on the CPU the overhead of spawning threads should be
 ```
 
 
-### 5.3. `merge_sort` and friends
+### 5.3. `sort` and friends
+Sorting algorithms with similar interface and default settings as the Julia Base ones, on GPUs:
+- `sort!` (in-place), `sort` (out-of-place)
+- `sortperm!`, `sortperm`
+- **Other names**: `sort`, `sort_team`, `sort_team_by_key`, `stable_sort` or variations in Kokkos, RAJA, Thrust that I know of.
+
+Function signature:
+```julia
+sort!(v::AbstractGPUVector;
+      lt=isless, by=identity, rev::Bool=false, order::Base.Order.Ordering=Base.Order.Forward,
+      block_size::Int=128, temp::Union{Nothing, AbstractGPUVector}=nothing)
+
+sortperm!(ix::AbstractGPUVector, v::AbstractGPUVector;
+          lt=isless, by=identity, rev::Bool=false, order::Base.Order.Ordering=Base.Order.Forward,
+          block_size::Int=128, temp::Union{Nothing, AbstractGPUVector}=nothing)
+```
+
+Specific implementations that the interfaces above forward to:
 - `merge_sort!` (in-place), `merge_sort` (out-of-place) - sort arbitrary objects with custom comparisons.
 - `merge_sort_by_key!`, `merge_sort_by_key` - sort a vector of keys along with a "payload", a vector of corresponding values.
 - `merge_sortperm!`, `merge_sortperm`, `merge_sortperm_lowmem!`, `merge_sortperm_lowmem` - compute a sorting index permutation. 
-- **Other names**: `sort`, `sort_team`, `sort_team_by_key`, `stable_sort` or variations in Kokkos, RAJA, Thrust that I know of.
 
 Function signature:
 ```julia
@@ -240,14 +258,14 @@ import AcceleratedKernels as AK
 using AMDGPU
 
 v = ROCArray(rand(Int32, 100_000))
-AK.merge_sort!(v)
+AK.sort!(v)
 ```
 
 As GPU memory is more expensive, all functions in AcceleratedKernels.jl expose any temporary arrays they will use (the `temp` argument); you can supply your own buffers to make the algorithms not allocate additional GPU storage, e.g.:
 ```julia
 v = ROCArray(rand(Float32, 100_000))
 temp = similar(v)
-merge_sort!(v, temp=temp)
+sort!(v, temp=temp)
 ```
 
 
@@ -444,7 +462,8 @@ Note that we did not have to explicitly type the function arguments in `compute_
 ## 7. Testing
 If it ain't tested, it's broken. The `test/runtests.jl` suite does randomised correctness testing on all algorithms in the library. To test locally, execute:
 ```bash
-path/to/KernelAbstractions.jl> julia --project=. -e 'import Pkg; Pkg.test(test_args=["--oneAPI"])'
+$> julia -e 'import Pkg; Pkg.develop(path="path/to/AcceleratedKernels.jl"); Pkg.add("oneAPI")'
+$> julia -e 'import Pkg; Pkg.test("AcceleratedKernels.jl", test_args=["--oneAPI"])'
 ```
 
 Replace the `"--oneAPI"` with `"--CUDA"`, `"--AMDGPU"` or `"--Metal"` to test different backends, as available on your machine.

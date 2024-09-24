@@ -69,9 +69,9 @@ end
 
 function TaskPartitioner(num_elems, max_tasks=Threads.nthreads(), min_elems=1)
     # Simple correctness checks
-    num_elems >= 0 || throw(ArgumentError("num_elems must be >= 0"))
-    max_tasks > 0 || throw(ArgumentError("max_tasks must be > 0"))
-    min_elems > 0 || throw(ArgumentError("min_elems must be > 0"))
+    @argcheck num_elems >= 0
+    @argcheck max_tasks > 0
+    @argcheck min_elems > 0
 
     # Number of tasks needed to have at least `min_elems` per task
     num_tasks = min(max_tasks, num_elems ÷ min_elems)
@@ -167,12 +167,12 @@ function _task_partition_threads(f, num_elems, max_tasks, min_elems)
     tasks = Vector{Task}(undef, tp.num_tasks - 1)
 
     # Launch first N - 1 tasks
-    @inbounds for i in 1:tp.num_tasks - 1
-        tasks[i] = Threads.@spawn f(tp[i])
+    for i in 1:tp.num_tasks - 1
+        tasks[i] = Threads.@spawn f(@inbounds(tp[i]))
     end
 
     # Execute task N on this main thread
-    @inbounds f(tp[tp.num_tasks])
+    f(@inbounds(tp[tp.num_tasks]))
 
     # Wait for the tasks to finish
     @inbounds for i in 1:tp.num_tasks - 1

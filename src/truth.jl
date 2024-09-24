@@ -28,7 +28,7 @@ function any(
     block_size::Int=256,
     cooperative::Bool=true,
 )
-    @assert block_size > 0
+    @argcheck block_size > 0
 
     # Some platforms crash when multiple threads write to the same memory location in a global
     # array (e.g. old Intel Graphics); if it is the same value, it is well-defined on others (e.g.
@@ -59,7 +59,7 @@ function all(
     block_size::Int=256,
     cooperative::Bool=true,
 )
-    @assert block_size > 0
+    @argcheck block_size > 0
 
     # Some platforms crash when multiple threads write to the same memory location in a global
     # array (e.g. old Intel Graphics); if it is the same value, it is well-defined on others (e.g.

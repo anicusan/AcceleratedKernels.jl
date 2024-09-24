@@ -134,10 +134,10 @@ function merge_sort!(
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     # Simple sanity checks
-    @assert block_size > 0
+    @argcheck block_size > 0
     if !isnothing(temp)
-        @assert length(temp) == length(v)
-        @assert eltype(temp) === eltype(v)
+        @argcheck length(temp) == length(v)
+        @argcheck eltype(temp) === eltype(v)
     end
 
     # Construct comparator
@@ -200,4 +200,3 @@ function merge_sort(
     )
     v_copy
 end
-

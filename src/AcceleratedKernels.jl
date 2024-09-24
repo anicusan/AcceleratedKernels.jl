@@ -11,6 +11,7 @@ module AcceleratedKernels
 
 
 # Internal dependencies
+using ArgCheck
 using GPUArrays: AbstractGPUVector, @allowscalar
 using KernelAbstractions
 using Polyester: @batch

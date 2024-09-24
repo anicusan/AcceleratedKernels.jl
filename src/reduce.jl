@@ -92,8 +92,8 @@ function reduce(
     temp::Union{Nothing, AbstractGPUVector}=nothing,
     switch_below::Int=0,
 )
-    @assert 1 <= block_size <= 1024
-    @assert switch_below >= 0
+    @argcheck 1 <= block_size <= 1024
+    @argcheck switch_below >= 0
 
     # Degenerate cases
     len = length(src)
@@ -109,12 +109,8 @@ function reduce(
     blocks = (len + num_per_block - 1) ÷ num_per_block
 
     if !isnothing(temp)
-        if length(temp) >= blocks * 2
-            dst = temp
-        else
-            @warn "temp vector given was too short; replacing with new allocation"
-            dst = similar(src, eltype(src), blocks * 2)
-        end
+        @argcheck length(temp) >= blocks * 2
+        dst = temp
     else
         dst = similar(src, eltype(src), blocks * 2)
     end

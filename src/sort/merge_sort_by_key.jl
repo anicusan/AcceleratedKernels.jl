@@ -165,15 +165,15 @@ function merge_sort_by_key!(
     temp_values::Union{Nothing, AbstractGPUVector}=nothing,
 )
     # Simple sanity checks
-    @assert block_size > 0
-    @assert length(keys) == length(values)
+    @argcheck block_size > 0
+    @argcheck length(keys) == length(values)
     if !isnothing(temp_keys)
-        @assert length(temp_keys) == length(keys)
-        @assert eltype(temp_keys) === eltype(keys)
+        @argcheck length(temp_keys) == length(keys)
+        @argcheck eltype(temp_keys) === eltype(keys)
     end
     if !isnothing(temp_values)
-        @assert length(temp_values) == length(values)
-        @assert eltype(temp_values) === eltype(values)
+        @argcheck length(temp_values) == length(values)
+        @argcheck eltype(temp_values) === eltype(values)
     end
 
     # Construct comparator

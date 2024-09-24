@@ -65,7 +65,8 @@
     end
 
     # Code below would work on NVidia GPUs with warp size of 32, but create race conditions and
-    # return incorrect results on Intel Graphics.
+    # return incorrect results on Intel Graphics. It would be useful to have a way to statically
+    # query the warp size at compile time
     #
     # if ithread < 32
     #     N >= 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
@@ -91,8 +92,8 @@ function mapreduce(
     temp::Union{Nothing, AbstractGPUVector}=nothing,
     switch_below::Int=0,
 )
-    @assert 1 <= block_size <= 1024
-    @assert switch_below >= 0
+    @argcheck 1 <= block_size <= 1024
+    @argcheck switch_below >= 0
 
     # Degenerate cases
     len = length(src)
@@ -111,13 +112,9 @@ function mapreduce(
     blocks = (len + num_per_block - 1) ÷ num_per_block
 
     if !isnothing(temp)
-        @assert eltype(temp) === dst_type
-        if length(temp) > blocks * 2
-            dst = temp
-        else
-            @warn "temp vector given was too short; replacing with new allocation"
-            dst = similar(src, dst_type, blocks * 2)
-        end
+        @argcheck eltype(temp) === dst_type
+        @argcheck length(temp) > blocks * 2
+        dst = temp
     else
         dst = similar(src, dst_type, blocks * 2)
     end

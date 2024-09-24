@@ -13,16 +13,16 @@ function merge_sortperm!(
     temp_v::Union{Nothing, AbstractGPUVector}=nothing,
 )
     # Simple sanity checks
-    @assert block_size > 0
-    @assert length(ix) == length(v)
+    @argcheck block_size > 0
+    @argcheck length(ix) == length(v)
     if !isnothing(temp_ix)
-        @assert length(temp_ix) == length(ix)
-        @assert eltype(temp_ix) === eltype(ix)
+        @argcheck length(temp_ix) == length(ix)
+        @argcheck eltype(temp_ix) === eltype(ix)
     end
 
     if !isnothing(temp_v)
-        @assert length(temp_v) == length(v)
-        @assert eltype(temp_v) === eltype(v)
+        @argcheck length(temp_v) == length(v)
+        @argcheck eltype(temp_v) === eltype(v)
     end
 
     # Initialise indices that will be sorted by the keys in v
@@ -76,11 +76,11 @@ function merge_sortperm_lowmem!(
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     # Simple sanity checks
-    @assert block_size > 0
-    @assert length(ix) == length(v)
+    @argcheck block_size > 0
+    @argcheck length(ix) == length(v)
     if !isnothing(temp)
-        @assert length(temp) == length(ix)
-        @assert eltype(temp) === eltype(ix)
+        @argcheck length(temp) == length(ix)
+        @argcheck eltype(temp) === eltype(ix)
     end
 
     # Initialise indices that will be sorted by the keys in v

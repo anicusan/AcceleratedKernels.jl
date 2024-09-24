@@ -44,8 +44,8 @@ function searchsortedfirst!(
     block_size::Int=256,
 )
     # Simple sanity checks
-    @assert block_size > 0
-    @assert length(ix) == length(x)
+    @argcheck block_size > 0
+    @argcheck length(ix) == length(x)
 
     # Construct comparator
     ord = Base.Order.ord(lt, by, rev)
@@ -82,7 +82,7 @@ function searchsortedfirst!(
     min_elems::Int=1000,
 )
     # Simple sanity checks
-    @assert length(ix) == length(x)
+    @argcheck length(ix) == length(x)
 
     # Construct comparator
     ord = Base.Order.ord(lt, by, rev)
@@ -120,8 +120,8 @@ function searchsortedlast!(
     block_size::Int=256,
 )
     # Simple sanity checks
-    @assert block_size > 0
-    @assert length(ix) == length(x)
+    @argcheck block_size > 0
+    @argcheck length(ix) == length(x)
 
     # Construct comparator
     ord = Base.Order.ord(lt, by, rev)
@@ -158,7 +158,7 @@ function searchsortedlast!(
     min_elems::Int=1000,
 )
     # Simple sanity checks
-    @assert length(ix) == length(x)
+    @argcheck length(ix) == length(x)
 
     # Construct comparator
     ord = Base.Order.ord(lt, by, rev)
