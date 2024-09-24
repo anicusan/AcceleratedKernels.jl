@@ -124,7 +124,6 @@ function merge_sortperm_lowmem!(
         end
     end
 
-    synchronize(backend)
     nothing
 end
 

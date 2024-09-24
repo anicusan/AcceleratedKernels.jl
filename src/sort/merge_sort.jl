@@ -176,7 +176,6 @@ function merge_sort!(
         end
     end
 
-    synchronize(backend)
     nothing
 end
 

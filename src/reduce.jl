@@ -125,7 +125,6 @@ function reduce(
 
     len = blocks
     if len < switch_below
-        synchronize(backend)
         h_src = Vector(@view(dst[1:len]))
         return Base.reduce(op, h_src, init=init)
     end
@@ -143,7 +142,6 @@ function reduce(
         len = blocks
 
         if len < switch_below
-            synchronize(backend)
             h_src = Vector(@view(p2[1:len]))
             return Base.reduce(op, h_src, init=init)
         end
@@ -152,7 +150,6 @@ function reduce(
         p1 = @view p1[1:len]
     end
 
-    synchronize(backend)
     return @allowscalar p1[1]
 end
 

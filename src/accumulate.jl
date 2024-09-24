@@ -247,7 +247,7 @@ function accumulate!(
                  ndrange=(num_blocks - 1) * block_size)
     end
 
-    synchronize(backend)
+    nothing
 end
 
 

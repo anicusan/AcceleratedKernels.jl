@@ -217,7 +217,6 @@ function merge_sort_by_key!(
         end
     end
 
-    synchronize(backend)
     nothing
 end
 

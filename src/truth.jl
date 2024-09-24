@@ -37,8 +37,6 @@ function any(
         backend = get_backend(v)
         out = KernelAbstractions.zeros(backend, Int8, 1)
         _any_global!(backend, block_size)(out, pred, v, ndrange=length(v))
-        synchronize(backend)
-
         outh = Array(out)
         return outh[1] == 0 ? false : true
     else
@@ -68,8 +66,6 @@ function all(
         backend = get_backend(v)
         out = KernelAbstractions.zeros(backend, Int8, 1)
         _any_global!(backend, block_size)(out, (!pred), v, ndrange=length(v))
-        synchronize(backend)
-
         outh = Array(out)
         return outh[1] == 0 ? true : false
     else

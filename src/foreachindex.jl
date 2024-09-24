@@ -15,7 +15,6 @@ function foreachindex(
     # GPU implementation
     @argcheck block_size > 0
     _foreachindex_global!(backend, block_size)(f, eachindex(itr), ndrange=length(itr))
-    synchronize(backend)
     nothing
 end
 

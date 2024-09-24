@@ -131,7 +131,6 @@ function mapreduce(
     # the beginning of the first and second halves of dst
     len = blocks
     if len < switch_below
-        synchronize(backend)
         h_src = Vector(@view(dst[1:len]))
         return Base.mapreduce(f, op, h_src, init=init)
     end
@@ -149,7 +148,6 @@ function mapreduce(
         len = blocks
 
         if len < switch_below
-            synchronize(backend)
             h_src = Vector(@view(p2[1:len]))
             return Base.reduce(op, h_src, init=init)
         end
@@ -158,7 +156,6 @@ function mapreduce(
         p1 = @view p1[1:len]
     end
 
-    synchronize(backend)
     return @allowscalar p1[1]
 end
 
