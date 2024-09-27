@@ -123,6 +123,9 @@ Base.length(tp::TaskPartitioner) = tp.num_tasks
 
 
 """
+    task_partition(f, num_elems, max_tasks=Threads.nthreads(), min_elems=1)
+    task_partition(f, tp::TaskPartitioner)
+
 Partition `num_elems` jobs across at most `num_tasks` parallel tasks with at least `min_elems` per
 task, calling `f(start_index:end_index)`, where the indices are between 1 and `num_elems`.
 
@@ -156,14 +159,14 @@ function task_partition(f, num_elems, max_tasks=Threads.nthreads(), min_elems=1)
     else
         # Compiler should decide if this should be inlined; threading adds quite a bit of code, it
         # is faster (as seen in Cthulhu) to keep it in a separate self-contained function
-        _task_partition_threads(f, num_elems, max_tasks, min_elems)
+        tp = TaskPartitioner(num_elems, max_tasks, min_elems)
+        task_partition(f, tp)
     end
     nothing
 end
 
 
-function _task_partition_threads(f, num_elems, max_tasks, min_elems)
-    tp = TaskPartitioner(num_elems, max_tasks, min_elems)
+function task_partition(f, tp::TaskPartitioner)
     tasks = Vector{Task}(undef, tp.num_tasks - 1)
 
     # Launch first N - 1 tasks

@@ -12,7 +12,7 @@ module AcceleratedKernels
 
 # Internal dependencies
 using ArgCheck
-using GPUArrays: AbstractGPUVector, @allowscalar
+using GPUArraysCore: AbstractGPUVector, @allowscalar
 using KernelAbstractions
 using Polyester: @batch
 using DocStringExtensions
@@ -28,9 +28,6 @@ include("mapreduce.jl")
 include("accumulate.jl")
 include("searchsorted.jl")
 include("truth.jl")
-
-
-# TODO: add commented backends to tests and docs
 
 
 end     # module AcceleratedKernels
