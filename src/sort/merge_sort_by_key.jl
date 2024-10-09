@@ -1,4 +1,4 @@
-@kernel inbounds=true function _merge_sort_by_key_block!(keys, values, @Const(comp))
+@kernel inbounds=true function _merge_sort_by_key_block!(keys, values, comp)
 
     N = @groupsize()[1]
     s_keys = @localmem eltype(keys) (N * 2,)
@@ -99,7 +99,7 @@ end
 
 @kernel inbounds=true function _merge_sort_by_key_global!(@Const(keys_in), keys_out,
                                                           @Const(values_in), values_out,
-                                                          @Const(comp), @Const(half_size_group))
+                                                          comp, half_size_group)
 
     len = length(keys_in)
     N = @groupsize()[1]
