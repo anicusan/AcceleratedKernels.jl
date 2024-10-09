@@ -61,7 +61,7 @@ The sorting algorithms can also be combined with [`MPISort.jl`](https://github.c
 
 ![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_throughput.png?raw=true)
 
-In the figure above, "CC-JB" uses the Julia Base sorter with MPI communication; "GC-\*" represents a GPU sorting algorithm with MPI communication over CPU RAM (i.e. no GPUDirect interconnects; it incurs a transfer from GPU to host CPU for each MPI transfer); "GG-\*" stands for a GPU algorithm with direct GPU-to-GPU memory transfer over MPI (i.e. fancy GPUDirect interconnects). "AK" is the AcceleratedKernels.jl `merge_sort!` algorithm, "TM" is the CUDA Thrust merge sort, "TR" is the CUDA Thrust radix sort. Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/). Full analysis will be linked here once our paper is published.
+Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/). Full analysis will be linked here once our paper is published.
 
 
 ## 4. Functions Implemented
@@ -480,15 +480,11 @@ For other library-related problems, feel free to post a GitHub issue. For help i
 
 
 ## 9. Roadmap / Future Plans
-- Discuss interface with community, see if there is any algorithm we should export by default.
 - Automated optimisation of e.g. `block_size` for a given input; can be made algorithm-agnostic.
-- Should we add CPU alternatives to all algorithms? E.g. `foreachindex` has one, `any` does not.
-- Multithreaded CPU merge sort with the base case dispatching to Base.sort (which is fantastic anyways)?
-- GPU radix sort? Might be too dependent on intrinsics to be performant...
+- Add performant multithreaded Julia implementations to all algorithms; e.g. `foreachindex` has one, `any` does not.
 - Any way to expose the warp-size from the backends? Would be useful in reductions.
 - Define default `init` values for often-used reductions? Or just expose higher-level functions like `sum`, `minimum`, etc.?
-- Should we add a `synchronize::Bool` keyword argument to all functions to avoid the final device synchronisation in case they're called as part of a longer sequence of kernels?
-- **Other ideas?** Post an issue. Or maybe the Julia Slack #gpu discussion.
+- **Other ideas?** Post an issue, or open a discussion on the Julia Discourse.
 
 
 ## 10. References
