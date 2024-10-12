@@ -12,8 +12,8 @@ const ACC_FLAG_P::Int8 = 1          # Only current block's prefix available
 end
 
 
-@kernel cpu=false inbounds=true function _accumulate_block!(@Const(op), v, @Const(init),
-                                                            @Const(inclusive),
+@kernel cpu=false inbounds=true function _accumulate_block!(op, v, init,
+                                                            inclusive,
                                                             flags, prefixes)  # one per block
 
     # NOTE: shmem_size MUST be greater than 2 * block_size
@@ -139,8 +139,7 @@ end
 end
 
 
-@kernel cpu=false inbounds=true function _accumulate_previous!(@Const(op), v, @Const(init),
-                                                               flags, @Const(prefixes))
+@kernel cpu=false inbounds=true function _accumulate_previous!(op, v, init, flags, @Const(prefixes))
 
     len = length(v)
     block_size = @groupsize()[1]

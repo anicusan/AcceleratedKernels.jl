@@ -1,4 +1,4 @@
-@kernel inbounds=true cpu=false function _reduce_block!(@Const(src), dst, @Const(op), @Const(init))
+@kernel inbounds=true cpu=false function _reduce_block!(@Const(src), dst, op, init)
 
     N = @groupsize()[1]
     sdata = @localmem eltype(dst) (N,)
@@ -26,41 +26,41 @@
     @synchronize()
 
     if N >= 512
-        ithread < 256 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 256 + 1]))
+        ithread < 256 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 256 + 1]))
         @synchronize()
     end
     if N >= 256
-        ithread < 128 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 128 + 1]))
+        ithread < 128 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 128 + 1]))
         @synchronize()
     end
     if N >= 128
-        ithread < 64 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 64 + 1]))
+        ithread < 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 64 + 1]))
         @synchronize()
     end
 
     # CUDA has a warp size of 32, AMD a "wavefront" of 64, and Intel Graphics messes it up
     if N >= 64
-        ithread < 32 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
+        ithread < 32 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
         @synchronize()
     end
     if N >= 32
-        ithread < 16 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 16 + 1]))
+        ithread < 16 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 16 + 1]))
         @synchronize()
     end
     if N >= 16
-        ithread < 8 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 8 + 1]))
+        ithread < 8 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 8 + 1]))
         @synchronize()
     end
     if N >= 8
-        ithread < 4 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 4 + 1]))
+        ithread < 4 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 4 + 1]))
         @synchronize()
     end
     if N >= 4
-        ithread < 2 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 2 + 1]))
+        ithread < 2 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 2 + 1]))
         @synchronize()
     end
     if N >= 2
-        ithread < 1 && (@inbounds sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 1 + 1]))
+        ithread < 1 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 1 + 1]))
         @synchronize()
     end
 
