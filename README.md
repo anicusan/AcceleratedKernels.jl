@@ -3,7 +3,7 @@
 *"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
 <!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/) -->
-<!-- [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/) -->
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
 <!-- [![Build Status](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml?query=branch%3Amain) -->
 
 
@@ -88,7 +88,7 @@ Below is an overview of the currently-implemented algorithms, along with some co
 
 ## 5. API Examples
 
-Here are simple examples using the AcceleratedKernels.jl algorithms to help you get started with it quickly; more details on the function arguments are given in the Manual [TODO link].
+Here are simple examples using the AcceleratedKernels.jl algorithms to help you get started with it quickly; more details on the function arguments are given in the [Manual](https://anicusan.github.io/AcceleratedKernels.jl).
 
 
 ### 5.1. Using Different Backends
@@ -482,7 +482,7 @@ Replace the `"--oneAPI"` with `"--CUDA"`, `"--AMDGPU"` or `"--Metal"` to test di
 ## 8. Issues and Debugging
 As the compilation pipeline of GPU kernels is different to that of base Julia, error messages also look different - for example, where Julia would insert an exception when a variable name was not defined (e.g. we had a typo), a GPU kernel throwing exceptions cannot be compiled and instead you'll see some cascading errors like `"[...] compiling [...] resulted in invalid LLVM IR"` caused by `"Reason: unsupported use of an undefined name"` resulting in `"Reason: unsupported dynamic function invocation"`, etc.
 
-Thankfully, there are only about 3 types of such error messages and they're not that scary when you look into them. See the Manual section on debugging [TODO: add link] for examples and explanations.
+Thankfully, there are only about 3 types of such error messages and they're not that scary when you look into them. See the Manual section on [debugging](https://anicusan.github.io/AcceleratedKernels.jl/dev/debugging/) for examples and explanations.
 
 For other library-related problems, feel free to post a GitHub issue. For help implementing new code, or just advice, you can also use the [Julia Discourse](https://discourse.julialang.org/c/domain/gpu/11) forum, the community is incredibly helpful.
 
