@@ -21,5 +21,5 @@ AK.DocHelpers.readme_section("## 2. Status") # hide
 
 ---
 
-## License
+## License
 AcceleratedKernels.jl is MIT-licensed. Enjoy.
