@@ -1,4 +1,4 @@
-[![AcceleratedKernels.jl](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/banner.png?raw=true)](https://anicusan.github.io/AcceleratedKernels.jl)
+[![AcceleratedKernels.jl](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/banner.png?raw=true)](https://anicusan.github.io/AcceleratedKernels.jl)
 
 *"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
@@ -52,14 +52,14 @@ Some arithmetic-heavy benchmarks are given below - see [this repository](https:/
 
 See `protoype/sort_benchmark.jl` for a small-scale sorting benchmark code and `prototype/thrust_sort` for the Nvidia Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
 
-![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_benchmark.png?raw=true)
+![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_benchmark.png?raw=true)
 
 As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter (x3.48 slower), and an order of magnitude faster (x10.19) than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
 The sorting algorithms can also be combined with [`MPISort.jl`](https://github.com/anicusan/MPISort.jl) for multi-*device* sorting - indeed, you can co-operatively sort using **both** your CPU and GPU! Or use 200 GPUs on the 52 nodes of [Baskerville HPC](https://www.baskerville.ac.uk/) to sort 538-855 GB of data per second (comparable with the highest figure reported in literature of [900 GB/s on 262,144 CPU cores](http://dx.doi.org/10.1145/2464996.2465442)):
 
-![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/static/sort_throughput.png?raw=true)
+![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_throughput.png?raw=true)
 
 Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/). Full analysis will be linked here once our paper is published.
 
@@ -163,9 +163,17 @@ This is a parallelised for-loop over the indices of an iterable; converts normal
 
 Function signature:
 ```julia
-foreachindex(f, itr, [backend::GPU]; block_size::Int=256)
-foreachindex(f, itr, [backend::CPU]; scheduler=:polyester, max_tasks=Threads.nthreads(), min_elems=1)
-foreachindex(f, itr, backend=get_backend(itr); kwargs...)
+foreachindex(
+    f, itr, backend::Backend=get_backend(itr);
+
+    # CPU settings
+    scheduler=:threads,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size=256,
+)
 ```
 
 Example:
@@ -265,7 +273,7 @@ As GPU memory is more expensive, all functions in AcceleratedKernels.jl expose a
 ```julia
 v = ROCArray(rand(Float32, 100_000))
 temp = similar(v)
-sort!(v, temp=temp)
+AK.sort!(v, temp=temp)
 ```
 
 
@@ -286,12 +294,12 @@ import AcceleratedKernels as AK
 using CUDA
 
 v = CuArray{Int16}(rand(1:1000, 100_000))
-reduce((x, y) -> x + y, v; init=0)
+AK.reduce((x, y) -> x + y, v; init=0)
 ```
 
 In a reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there (in a reduction we have to do a device-to-host transfer anyways for the final result); `switch_below` may be worth using (benchmark!) - here computing a minimum with the reduction operator defined in a Julia `do` block:
 ```julia
-reduce(v; init=typemax(eltype(v)), switch_below=100) do x, y
+AK.reduce(v; init=typemax(eltype(v)), switch_below=100) do x, y
     x < y ? x : y
 end
 ```
@@ -316,7 +324,7 @@ import AcceleratedKernels as AK
 using Metal
 
 v = MtlArray{Int32}(rand(-5:5, 100_000))
-mapreduce(abs, (x, y) -> x < y ? x : y, v, init=typemax(Int32))
+AK.mapreduce(abs, (x, y) -> x < y ? x : y, v, init=typemax(Int32))
 ```
 
 As for `reduce`, when there are fewer than `switch_below` elements left to reduce, they can be copied back to the host and we switch to a CPU reduction. The `init` initialiser has to be a neutral element for `op`, i.e. same type as returned from `f` (`f` can change the type of the collection, see the "Custom Structs" section below for an example). The temporary array `temp` needs to have at least `(length(src) + 2 * block_size - 1) ÷ (2 * block_size)` elements and have `eltype(src) === typeof(init)`.
@@ -345,7 +353,7 @@ import AcceleratedKernels as AK
 using oneAPI
 
 v = oneAPI.ones(Int32, 100_000)
-accumulate!(+, v, init=0)
+AK.accumulate!(+, v, init=0)
 ```
 
 The temporaries `temp_v` and `temp_flags` should both have at least `(length(v) + 2 * block_size - 1) ÷ (2 * block_size)` elements; `eltype(v) === eltype(temp_v)`; the elements in `temp_flags` can be any integers, but `Int8` is used by default to reduce memory usage. 
@@ -480,10 +488,23 @@ For other library-related problems, feel free to post a GitHub issue. For help i
 
 
 ## 9. Roadmap / Future Plans
-- Automated optimisation of e.g. `block_size` for a given input; can be made algorithm-agnostic.
+Help is very welcome for any of the below:
+- Automated optimisation / tuning of e.g. `block_size` for a given input; can be made algorithm-agnostic.
+  - Maybe some thing like `AK.@tune reduce(f, src, init=init, block_size=$block_size) block_size=(64, 128, 256, 512, 1024)`. Macro wizards help!
+  - Or make it general like:
+  ```julia
+  AK.@tune begin
+      reduce(f, src, init=init,
+             block_size=$block_size,
+             switch_below=$switch_below)
+      block_size=(64, 128, 256, 512, 1024)
+      switch_below=(1, 10, 100, 1000, 10000)
+  end
+  ```
 - Add performant multithreaded Julia implementations to all algorithms; e.g. `foreachindex` has one, `any` does not.
 - Any way to expose the warp-size from the backends? Would be useful in reductions.
 - Define default `init` values for often-used reductions? Or just expose higher-level functions like `sum`, `minimum`, etc.?
+- Add a performance regressions runner.
 - **Other ideas?** Post an issue, or open a discussion on the Julia Discourse.
 
 

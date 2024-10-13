@@ -1,7 +1,6 @@
 using AcceleratedKernels
 using Documenter
 
-DocMeta.setdocmeta!(AcceleratedKernels, :DocTestSetup, :(using AcceleratedKernels); recursive=true)
 
 makedocs(;
     modules=[AcceleratedKernels],
@@ -11,13 +10,33 @@ makedocs(;
         canonical="https://anicusan.github.io/AcceleratedKernels.jl",
         edit_link="main",
         assets=String[],
+        sidebar_sitename=false,
 
         # Only create web pretty-URLs on the CI
         prettyurls = get(ENV, "CI", nothing) == "true",
     ),
     pages=[
-        "Home" => "index.md",
+        "Overview" => "index.md",
+        "Benchmarks" => "benchmarks.md",
+        "Performance Tips" => "performance.md",
+        "Manual" =>[
+            "Using Different Backends" => "api/using_backends.md",
+            "General Loops" => "api/foreachindex.md",
+            "Sorting" => "api/sort.md",
+            "Reduce" => "api/reduce.md",
+            "MapReduce" => "api/mapreduce.md",
+            "Accumulate" => "api/accumulate.md",
+            "Binary Search" => "api/binarysearch.md",
+            "Predicates" => "api/predicates.md",
+            "Custom Structs" => "api/custom_structs.md",
+            "Task Partitioning" => "api/task_partition.md",
+        ],
+        "Testing" => "testing.md",
+        "Debugging Kernels" => "debugging.md",
+        "Roadmap" => "roadmap.md",
+        "References" => "references.md",
     ],
+    warnonly=true,
 )
 
 deploydocs(;

@@ -31,7 +31,7 @@ else
             julia> Pkg.test(test_args=["--oneAPI"])
         Or:
             bash> julia --project=. -e 'import Pkg; Pkg.test(test_args=["--oneAPI"])'
-        Where you can replace `"--oneAPI"` with `"--Metal"`, `"--CUDA"` or `"--ROCm"`.
+        Where you can replace `"--oneAPI"` with `"--Metal"`, `"--CUDA"` or `"--AMDGPU"`.
         """
     ))
 end

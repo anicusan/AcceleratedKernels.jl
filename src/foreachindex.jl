@@ -5,7 +5,7 @@
 end
 
 
-function foreachindex(
+function _foreachindex_gpu(
     f,
     itr,
     backend::GPU;
@@ -40,7 +40,7 @@ function _foreachindex_threads(f, itr, max_tasks, min_elems)
 end
 
 
-@inline function foreachindex(
+@inline function _foreachindex_cpu(
     f,
     itr,
     backend::CPU;
@@ -63,9 +63,17 @@ end
 
 
 """
-    foreachindex(f, itr, [backend::GPU]; block_size::Int=256)
-    foreachindex(f, itr, [backend::CPU]; scheduler=:threads, max_tasks=Threads.nthreads(), min_elems=1)
-    foreachindex(f, itr, backend=get_backend(itr); kwargs...)
+    foreachindex(
+        f, itr, backend::Backend=get_backend(itr);
+
+        # CPU settings
+        scheduler=:threads,
+        max_tasks=Threads.nthreads(),
+        min_elems=1,
+
+        # GPU settings
+        block_size=256,
+    )
 
 Parallelised `for` loop over the indices of an iterable.
 
@@ -76,7 +84,8 @@ On CPUs at most `max_tasks` threads are launched, or fewer such that each thread
 `min_elems` indices; if a single task ends up being needed, `f` is inlined and no thread is
 launched. Tune it to your function - the more expensive it is, the fewer elements are needed to
 amortise the cost of launching a thread (which is a few μs). The scheduler can be `:polyester`
-to use Polyester.jl cheap threads or `:threads` to use normal Julia threads.
+to use Polyester.jl cheap threads or `:threads` to use normal Julia threads; either can be faster
+depending on the function, but in general the latter is more composable.
 
 # Examples
 Normally you would write a for loop like this:
@@ -129,8 +138,30 @@ end
 somecopy!(x)    # This works
 ```
 """
-function foreachindex(f, itr, backend=get_backend(itr); kwargs...)
-    @argcheck backend isa Backend               # To avoid calling this function recursively
-    foreachindex(f, itr, backend; kwargs...)
-end
+function foreachindex(
+    f, itr, backend::Backend=get_backend(itr);
 
+    # CPU settings
+    scheduler=:threads,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size=256,
+)
+    if backend isa CPU
+        _foreachindex_cpu(
+            f, itr, backend;
+            scheduler=scheduler,
+            max_tasks=max_tasks,
+            min_elems=min_elems,
+        )
+    elseif backend isa GPU
+        _foreachindex_gpu(
+            f, itr, backend;
+            block_size=block_size,
+        )
+    else
+        throw(ArgumentError("Backend must `CPU` or `<:GPU`. Received $backend"))
+    end
+end

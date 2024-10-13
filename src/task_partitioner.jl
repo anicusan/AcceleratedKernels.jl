@@ -13,7 +13,7 @@ elements per task.
 # Examples
 
 ```jldoctest
-using ImplicitBVH: TaskPartitioner
+using AcceleratedKernels: TaskPartitioner
 
 # Divide 10 elements between 4 tasks
 tp = TaskPartitioner(10, 4)
@@ -24,12 +24,12 @@ end
 # output
 tp[i] = 1:3
 tp[i] = 4:6
-tp[i] = 7:9
-tp[i] = 10:10
+tp[i] = 7:8
+tp[i] = 9:10
 ```
 
 ```jldoctest
-using ImplicitBVH: TaskPartitioner
+using AcceleratedKernels: TaskPartitioner
 
 # Divide 20 elements between 6 tasks with minimum 5 elements per task.
 # Not all tasks will be required
