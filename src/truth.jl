@@ -1,5 +1,5 @@
 # TODO: this hangs / dies on oneAPI. Test on CUDA
-@kernel cpu=false inbounds=true function _any_global!(out, @Const(pred), @Const(v))
+@kernel cpu=false inbounds=true function _any_global!(out, pred, @Const(v))
     temp = @localmem Int8 (1,)
     i = @index(Global, Linear)
 
