@@ -66,6 +66,8 @@ end
 
 
 @testset "task_partition" begin
+    Random.seed!(0)
+
     # Single-threaded
     x = zeros(Int, 1000)
     AK.task_partition(length(x), 1, 1) do irange
@@ -87,6 +89,8 @@ end
 
 
 @testset "foreachindex" begin
+    Random.seed!(0)
+
     # CPU
     x = zeros(Int, 1000)
     AK.foreachindex(x) do i
@@ -134,6 +138,57 @@ end
     f2(x)
     xh = Array(x)
     @test all(xh .== 1:length(xh))
+end
+
+
+@testset "map" begin
+    Random.seed!(0)
+
+    # CPU
+    x = Array(1:1000)
+    y = AK.map(x) do i
+        i^2
+    end
+    @test y == map(i -> i^2, x)
+
+    x = Array(1:1000)
+    y = zeros(Int, 1000)
+    AK.map!(y, x) do i
+        i^2
+    end
+    @test y == map(i -> i^2, x)
+
+    x = rand(Float32, 1000)
+    y = AK.map(x, scheduler=:threads, max_tasks=2, min_elems=100) do i
+        i > 0.5 ? i : 0
+    end
+    @test y == map(i -> i > 0.5 ? i : 0, x)
+
+    x = rand(Float32, 1000)
+    y = AK.map(x, scheduler=:polyester, max_tasks=4, min_elems=500) do i
+        i > 0.5 ? i : 0
+    end
+    @test y == map(i -> i > 0.5 ? i : 0, x)
+
+    # GPU
+    x = array_from_host(1:1000)
+    y = AK.map(x) do i
+        i^2
+    end
+    @test Array(y) == map(i -> i^2, 1:1000)
+
+    x = array_from_host(1:1000)
+    y = array_from_host(zeros(Int, 1000))
+    AK.map!(y, x) do i
+        i^2
+    end
+    @test Array(y) == map(i -> i^2, 1:1000)
+
+    x = array_from_host(rand(Float32, 1000))
+    y = AK.map(x, block_size=64) do i
+        i > 0.5 ? i : 0
+    end
+    @test Array(y) == map(i -> i > 0.5 ? i : 0, Array(x))
 end
 
 
@@ -492,7 +547,7 @@ end
 end
 
 
-@testset "reduce" begin
+@testset "reduce_1d" begin
     Random.seed!(0)
 
     function redmin(s)
@@ -563,6 +618,17 @@ end
         @test s ≈ sum(vh)
     end
 
+    # Allowing N-dimensional arrays, still reduced as 1D
+    for _ in 1:100
+        n1 = rand(1:100)
+        n2 = rand(1:100)
+        n3 = rand(1:100)
+        vh = rand(Float32, n1, n2, n3)
+        v = array_from_host(vh)
+        s = redsum(v)
+        @test s ≈ sum(vh)
+    end
+
     # Testing different settings
     AK.reduce(
         (x, y) -> x + 1,
@@ -580,7 +646,88 @@ end
 end
 
 
-@testset "mapreduce" begin
+@testset "reduce_nd" begin
+    Random.seed!(0)
+
+    # Test all possible corner cases against Base.reduce
+    for dims in 1:4
+        for isize in 0:3
+            for jsize in 0:3
+                for ksize in 0:3
+                    sh = rand(Int32(1):Int32(100), isize, jsize, ksize)
+                    s = array_from_host(sh)
+                    d = AK.reduce(+, s; init=Int32(0), dims=dims)
+                    dh = Array(d)
+                    @test dh == sum(sh, init=Int32(0), dims=dims)
+                    @test eltype(dh) == eltype(sum(sh, init=Int32(0), dims=dims))
+                end
+            end
+        end
+    end
+
+    # Fuzzy correctness testing
+    for _ in 1:100
+        for dims in 1:3
+            n1 = rand(1:100)
+            n2 = rand(1:100)
+            n3 = rand(1:100)
+            vh = rand(Int32(1):Int32(100), n1, n2, n3)
+            v = array_from_host(vh)
+            s = AK.reduce(+, v; init=Int32(0), dims=dims)
+            sh = Array(s)
+            @test sh == sum(vh, dims=dims)
+        end
+    end
+
+    for _ in 1:100
+        for dims in 1:3
+            n1 = rand(1:100)
+            n2 = rand(1:100)
+            n3 = rand(1:100)
+            vh = rand(UInt32(1):UInt32(100), n1, n2, n3)
+            v = array_from_host(vh)
+            s = AK.reduce(+, v; init=UInt32(0), dims=dims)
+            sh = Array(s)
+            @test sh == sum(vh, dims=dims)
+        end
+    end
+
+    for _ in 1:100
+        for dims in 1:3
+            n1 = rand(1:100)
+            n2 = rand(1:100)
+            n3 = rand(1:100)
+            vh = rand(Float32, n1, n2, n3)
+            v = array_from_host(vh)
+            s = AK.reduce(+, v; init=Float32(0), dims=dims)
+            sh = Array(s)
+            @test sh ≈ sum(vh, dims=dims)
+        end
+    end
+
+    # Testing different settings
+    AK.reduce(
+        (x, y) -> x + 1,
+        array_from_host(rand(Int32, 3, 4, 5)),
+        init=Int32(0),
+        dims=2,
+        block_size=64,
+        temp=array_from_host(zeros(Int32, 3, 1, 5)),
+        switch_below=50,
+    )
+    AK.reduce(
+        (x, y) -> x + 1,
+        array_from_host(rand(Int32, 3, 4, 5)),
+        init=Int32(0),
+        dims=3,
+        block_size=64,
+        temp=array_from_host(zeros(Int32, 3, 4, 1)),
+        switch_below=50,
+    )
+end
+
+
+@testset "mapreduce_1d" begin
     Random.seed!(0)
 
     struct Point
@@ -625,6 +772,24 @@ end
         @test mgpu[2] ≈ mcpu[2] ≈ mbase[2]
     end
 
+    # Allowing N-dimensional arrays, still reduced as 1D
+    for _ in 1:100
+        n1 = rand(1:100)
+        n2 = rand(1:100)
+        n3 = rand(1:100)
+
+        v = array_from_host([Point(rand(Float32), rand(Float32)) for _ in 1:n1, _ in 1:n2, _ in 1:n3])
+        mgpu = minbox(v)
+
+        vh = Array(v)
+        mcpu = minbox(vh)
+        mbase = minbox_base(vh)
+
+        @test typeof(mgpu) === typeof(mcpu) === typeof(mbase)
+        @test mgpu[1] ≈ mcpu[1] ≈ mbase[1]
+        @test mgpu[2] ≈ mcpu[2] ≈ mbase[2]
+    end
+
     # Testing different settings, enforcing change of type between f and op
     f(s, temp) = AK.mapreduce(
         p -> (p.x, p.y),
@@ -638,6 +803,115 @@ end
     v = array_from_host([Point(rand(Float32), rand(Float32)) for _ in 1:10_042])
     temp = similar(v, Tuple{Float32, Float32})
     f(v, temp)
+end
+
+
+@testset "mapreduce_nd" begin
+    Random.seed!(0)
+
+    # Test all possible corner cases against Base.reduce
+    for dims in 1:4
+        for isize in 0:3
+            for jsize in 0:3
+                for ksize in 0:3
+                    sh = rand(Int32(1):Int32(100), isize, jsize, ksize)
+                    s = array_from_host(sh)
+                    d = AK.mapreduce(-, +, s; init=Int32(0), dims=dims)
+                    dh = Array(d)
+                    @test dh == mapreduce(-, +, sh, init=Int32(0), dims=dims)
+                    @test eltype(dh) == eltype(sum(sh, init=Int32(0), dims=dims))
+                end
+            end
+        end
+    end
+
+    # Fuzzy correctness testing
+    for _ in 1:100
+        for dims in 1:3
+            n1 = rand(1:100)
+            n2 = rand(1:100)
+            n3 = rand(1:100)
+            vh = rand(Int32(1):Int32(100), n1, n2, n3)
+            v = array_from_host(vh)
+            s = AK.mapreduce(-, +, v; init=Int32(0), dims=dims)
+            sh = Array(s)
+            @test sh == mapreduce(-, +, vh, init=Int32(0), dims=dims)
+        end
+    end
+
+    struct Point2
+        x::Float32
+        y::Float32
+    end
+
+    # Only for backend-agnostic initialisation with KernelAbstractions.zero
+    Base.zero(::Type{Point2}) = Point2(0.0f0, 0.0f0)
+
+    function minbox(s, dims)
+        # Extract coordinates into tuple and reduce to find dimensionwise minima
+        AK.mapreduce(
+            p -> (p.x, p.y),
+            (a, b) -> (a[1] < b[1] ? a[1] : b[1], a[2] < b[2] ? a[2] : b[2]),
+            s;
+            init=(typemax(Float32), typemax(Float32)),
+            dims=dims,
+        )
+    end
+
+    function minbox_base(s, dims)
+        # Extract coordinates into tuple and reduce to find dimensionwise minima
+        Base.mapreduce(
+            p -> (p.x, p.y),
+            (a, b) -> (a[1] < b[1] ? a[1] : b[1], a[2] < b[2] ? a[2] : b[2]),
+            s;
+            init=(typemax(Float32), typemax(Float32)),
+            dims=dims,
+        )
+    end
+
+    # Fuzzy correctness testing
+    for _ in 1:100
+        for dims in 1:3
+            n1 = rand(1:100)
+            n2 = rand(1:100)
+            n3 = rand(1:100)
+            v = array_from_host([Point(rand(Float32), rand(Float32)) for _ in 1:n1, _ in 1:n2, _ in 1:n3])
+            mgpu = minbox(v, dims)
+
+            vh = Array(v)
+            mcpu = minbox(vh, dims)
+            mbase = minbox_base(vh, dims)
+
+            @test eltype(mgpu) === eltype(mcpu) === eltype(mbase)
+            for (i, mgpu_red) in enumerate(Array(mgpu))
+                @test mgpu_red[1] ≈ mcpu[i][1] ≈ mbase[i][1]
+                @test mgpu_red[2] ≈ mcpu[i][2] ≈ mbase[i][2]
+            end
+        end
+    end
+
+    # Testing different settings
+    AK.mapreduce(
+        -,
+        (x, y) -> x + 1,
+        array_from_host(rand(Int32, 3, 4, 5)),
+        init=Int32(0),
+        dims=2,
+        block_size=64,
+        temp=array_from_host(zeros(Int32, 3, 1, 5)),
+        switch_below=50,
+    )
+    AK.mapreduce(
+        -,
+        (x, y) -> x + 1,
+        array_from_host(rand(Int32, 3, 4, 5)),
+        init=Int32(0),
+        dims=3,
+        block_size=64,
+        temp=array_from_host(zeros(Int32, 3, 4, 1)),
+        switch_below=50,
+    )
+
 end
 
 

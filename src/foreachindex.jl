@@ -162,6 +162,6 @@ function foreachindex(
             block_size=block_size,
         )
     else
-        throw(ArgumentError("Backend must `CPU` or `<:GPU`. Received $backend"))
+        throw(ArgumentError("Backend must be `CPU` or `<:GPU`. Received $backend"))
     end
 end

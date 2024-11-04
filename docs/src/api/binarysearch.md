@@ -2,5 +2,5 @@
 
 ```@example
 import AcceleratedKernels as AK # hide
-AK.DocHelpers.readme_section("### 5.7. `searchsorted` and friends") # hide
+AK.DocHelpers.readme_section("### 5.8. `searchsorted` and friends") # hide
 ```

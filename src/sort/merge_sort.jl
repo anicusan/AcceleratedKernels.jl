@@ -176,7 +176,7 @@ function merge_sort!(
         end
     end
 
-    nothing
+    v
 end
 
 
@@ -197,5 +197,4 @@ function merge_sort(
         lt=lt, by=by, rev=rev, order=order,
         block_size=block_size, temp=temp,
     )
-    v_copy
 end

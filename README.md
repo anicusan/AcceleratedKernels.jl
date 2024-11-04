@@ -17,12 +17,13 @@ Parallel algorithm building blocks for the Julia ecosystem, targeting multithrea
 - [5. API Examples](#5-api-examples)
   - [5.1. Using Different Backends](#51-using-different-backends)
   - [5.2. `foreachindex`](#52-foreachindex)
-  - [5.3. `sort` and friends](#53-sort-and-friends)
-  - [5.4. `reduce`](#54-reduce)
-  - [5.5. `mapreduce`](#55-mapreduce)
-  - [5.6. `accumulate`](#56-accumulate)
-  - [5.7. `searchsorted` and friends](#57-searchsorted-and-friends)
-  - [5.8. `all` / `any`](#58-all--any)
+  - [5.3. `map`](#53-map)
+  - [5.4. `sort` and friends](#54-sort-and-friends)
+  - [5.5. `reduce`](#55-reduce)
+  - [5.6. `mapreduce`](#56-mapreduce)
+  - [5.7. `accumulate`](#57-accumulate)
+  - [5.8. `searchsorted` and friends](#58-searchsorted-and-friends)
+  - [5.9. `all` / `any`](#59-all--any)
 - [6. Custom Structs](#6-custom-structs)
 - [7. Testing](#7-testing)
 - [8. Issues and Debugging](#8-issues-and-debugging)
@@ -72,18 +73,19 @@ Below is an overview of the currently-implemented algorithms, along with some co
 | Function Family                               | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
 | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
 | [General Looping](#52-foreachindex)           | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
-| [Sorting](#53-sort-and-friends)               | `sort` `sort!`                                   | `sort` `sort_team` `stable_sort`                          |
+| [General Looping](#53-map)                    | `map` `map!`                                     | `thrust::transform`                                       |
+| [Sorting](#54-sort-and-friends)               | `sort` `sort!`                                   | `sort` `sort_team` `stable_sort`                          |
 |                                               | `merge_sort` `merge_sort!`                       |                                                           |
 |                                               | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
 |                                               | `sortperm` `sortperm!`                           | `sort_permutation` `index_permutation`                    |
 |                                               | `merge_sortperm` `merge_sortperm!`               |                                                           |
 |                                               | `merge_sortperm_lowmem` `merge_sortperm_lowmem!` |                                                           |
-| [Reduction](#54-reduce)                       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
-| [MapReduce](#55-mapreduce)                    | `mapreduce`                                      | `transform_reduce` `fold`                                 |
-| [Accumulation](#56-accumulate)                | `accumulate` `accumulate!`                       | `prefix_sum` `thrust::scan` `cumsum`                      |
-| [Binary Search](#57-searchsorted-and-friends) | `searchsortedfirst` `searchsortedfirst!`         | `std::lower_bound`                                        |
+| [Reduction](#55-reduce)                       | `reduce`                                         | `Kokkos:parallel_reduce` `fold` `aggregate`               |
+| [MapReduce](#56-mapreduce)                    | `mapreduce`                                      | `transform_reduce` `fold`                                 |
+| [Accumulation](#57-accumulate)                | `accumulate` `accumulate!`                       | `prefix_sum` `thrust::scan` `cumsum`                      |
+| [Binary Search](#58-searchsorted-and-friends) | `searchsortedfirst` `searchsortedfirst!`         | `std::lower_bound`                                        |
 |                                               | `searchsortedlast` `searchsortedlast!`           | `thrust::upper_bound`                                     |
-| [Predicates](#58-all--any)                    | `all` `any`                                      |                                                           |
+| [Predicates](#59-all--any)                    | `all` `any`                                      |                                                           |
 
 
 ## 5. API Examples
@@ -214,7 +216,40 @@ Similarly, for performance on the CPU the overhead of spawning threads should be
 ```
 
 
-### 5.3. `sort` and friends
+### 5.3. `map`
+Parallel mapping of a function over each element of an iterable via `foreachindex`:
+- `map!` (in-place), `map` (out-of-place)
+
+Function signature:
+```julia
+map!(
+    f, dst::AbstractArray, src::AbstractArray;
+
+    # CPU settings
+    scheduler=:threads,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size=256,    
+)
+```
+
+Example:
+```julia
+import Metal
+import AcceleratedKernels as AK
+
+x = MtlArray(rand(Float32, 100_000))
+y = similar(x)
+AK.map!(y, x) do x_elem
+    T = typeof(x_elem)
+    T(2) * x_elem + T(1)
+end
+```
+
+
+### 5.4. `sort` and friends
 Sorting algorithms with similar interface and default settings as the Julia Base ones, on GPUs:
 - `sort!` (in-place), `sort` (out-of-place)
 - `sortperm!`, `sortperm`
@@ -277,15 +312,23 @@ AK.sort!(v, temp=temp)
 ```
 
 
-### 5.4. `reduce`
+### 5.5. `reduce`
 Apply a custom binary operator reduction on all elements in an iterable; can be used to compute minima, sums, counts, etc.
 - **Other names**: `Kokkos:parallel_reduce`, `fold`, `aggregate`.
 
+**New in AcceleratedKernels 0.2.0: N-dimensional reductions via the `dims` keyword**
+
 Function signature:
 ```julia
-reduce(op, src::AbstractGPUVector; init,
-       block_size::Int=256, temp::Union{Nothing, AbstractGPUVector}=nothing,
-       switch_below::Int=0)
+reduce(
+    op, src::AbstractGPUArray;
+    init,
+    dims::Union{Nothing, Int}=nothing,
+
+    block_size::Int=256,
+    temp::Union{Nothing, AbstractGPUArray}=nothing,
+    switch_below::Int=0,
+)
 ```
 
 Example computing a sum:
@@ -307,15 +350,23 @@ end
 Yes, the lambda within the `do` block can equally well be executed on both CPU and GPU, no code changes/duplication required.
 
 
-### 5.5. `mapreduce`
+### 5.6. `mapreduce`
 Equivalent to `reduce(op, map(f, iterable))`, without saving the intermediate mapped collection; can be used to e.g. split documents into words (map) and count the frequency thereof (reduce).
 - **Other names**: `transform_reduce`, some `fold` implementations include the mapping function too.
 
+**New in AcceleratedKernels 0.2.0: N-dimensional reductions via the `dims` keyword**
+
 Function signature:
 ```julia
-mapreduce(f, op, src::AbstractGPUVector; init,
-          block_size::Int=256, temp::Union{Nothing, AbstractGPUVector}=nothing,
-          switch_below::Int=0)
+mapreduce(
+    f, op, src::AbstractGPUArray;
+    init,
+    dims::Union{Nothing, Int}=nothing,
+
+    block_size::Int=256,
+    temp::Union{Nothing, AbstractGPUArray}=nothing,
+    switch_below::Int=0,
+)
 ```
 
 Example computing the minimum of absolute values:
@@ -330,7 +381,7 @@ AK.mapreduce(abs, (x, y) -> x < y ? x : y, v, init=typemax(Int32))
 As for `reduce`, when there are fewer than `switch_below` elements left to reduce, they can be copied back to the host and we switch to a CPU reduction. The `init` initialiser has to be a neutral element for `op`, i.e. same type as returned from `f` (`f` can change the type of the collection, see the "Custom Structs" section below for an example). The temporary array `temp` needs to have at least `(length(src) + 2 * block_size - 1) ÷ (2 * block_size)` elements and have `eltype(src) === typeof(init)`.
 
 
-### 5.6. `accumulate`
+### 5.7. `accumulate`
 Compute accumulated running totals along a sequence by applying a binary operator to all elements up to the current one; often used in GPU programming as a first step in finding / extracting subsets of data.
 - `accumulate!` (in-place), `accumulate` (allocating); inclusive or exclusive.
 - **Other names**: prefix sum, `thrust::scan`, cumulative sum; inclusive (or exclusive) if the first element is included in the accumulation (or not).
@@ -359,7 +410,7 @@ AK.accumulate!(+, v, init=0)
 The temporaries `temp_v` and `temp_flags` should both have at least `(length(v) + 2 * block_size - 1) ÷ (2 * block_size)` elements; `eltype(v) === eltype(temp_v)`; the elements in `temp_flags` can be any integers, but `Int8` is used by default to reduce memory usage. 
 
 
-### 5.7. `searchsorted` and friends
+### 5.8. `searchsorted` and friends
 Find the indices where some elements `x` should be inserted into a sorted sequence `v` to maintain the sorted order. Effectively applying the Julia.Base functions in parallel on a GPU using `foreachindex`.
 - `searchsortedfirst!` (in-place), `searchsortedfirst` (allocating): index of first element in `v` >= `x[j]`.
 - `searchsortedlast!`, `searchsortedlast`: index of last element in `v` <= `x[j]`.
@@ -413,7 +464,7 @@ AK.searchsortedfirst!(ix, v, x)
 ```
 
 
-### 5.8. `all` / `any`
+### 5.9. `all` / `any`
 Apply a predicate to check if all / any elements in a collection return true. Could be implemented as a reduction, but is better optimised with stopping the search once a false / true is found.
 - **Other names**: not often implemented standalone on GPUs, typically included as part of a reduction.
 

@@ -37,6 +37,8 @@ function merge_sortperm!(
         block_size=block_size,
         temp_keys=temp_v, temp_values=temp_ix,
     )
+
+    ix
 end
 
 
@@ -59,7 +61,6 @@ function merge_sortperm(
         lt=lt, by=by, rev=rev, order=order,
         inplace=inplace, block_size=block_size, temp_ix=temp_ix, temp_v=temp_v,
     )
-    ix
 end
 
 
@@ -124,7 +125,7 @@ function merge_sortperm_lowmem!(
         end
     end
 
-    nothing
+    ix
 end
 
 
@@ -145,6 +146,5 @@ function merge_sortperm_lowmem(
         lt=lt, by=by, rev=rev, order=order,
         block_size=block_size, temp=temp,
     )
-    ix
 end
 

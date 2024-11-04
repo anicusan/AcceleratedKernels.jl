@@ -12,9 +12,10 @@ module AcceleratedKernels
 
 # Internal dependencies
 using ArgCheck
-using GPUArraysCore: AbstractGPUVector, @allowscalar
+using GPUArraysCore: AbstractGPUVector, AbstractGPUArray, @allowscalar
 using KernelAbstractions
 using Polyester: @batch
+using Unrolled
 using DocStringExtensions
 
 
@@ -22,9 +23,9 @@ using DocStringExtensions
 include("utils.jl")
 include("task_partitioner.jl")
 include("foreachindex.jl")
+include("map.jl")
 include("sort/sort.jl")
-include("reduce.jl")
-include("mapreduce.jl")
+include("reduce/reduce.jl")
 include("accumulate.jl")
 include("searchsorted.jl")
 include("truth.jl")

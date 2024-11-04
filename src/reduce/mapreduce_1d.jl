@@ -1,4 +1,4 @@
-@kernel inbounds=true cpu=false function _reduce_block!(@Const(src), dst, op, init)
+@kernel inbounds=true cpu=false function _mapreduce_block!(@Const(src), dst, f, op, init)
 
     N = @groupsize()[1]
     sdata = @localmem eltype(dst) (N,)
@@ -18,9 +18,9 @@
     if i >= len
         sdata[ithread + 1] = init
     elseif i + N >= len
-        sdata[ithread + 1] = src[i + 1]
+        sdata[ithread + 1] = f(src[i + 1])
     else
-        sdata[ithread + 1] = op(src[i + 1], src[i + N + 1])
+        sdata[ithread + 1] = op(f(src[i + 1]), f(src[i + N + 1]))
     end
 
     @synchronize()
@@ -65,8 +65,8 @@
     end
 
     # Code below would work on NVidia GPUs with warp size of 32, but create race conditions and
-    # return incorrect results on Intel Graphics. If we had the warp size we could avoid the
-    # @synchronize() calls
+    # return incorrect results on Intel Graphics. It would be useful to have a way to statically
+    # query the warp size at compile time
     #
     # if ithread < 32
     #     N >= 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
@@ -84,12 +84,12 @@ end
 
 
 
-function reduce(
-    op, src::AbstractGPUVector;
+function mapreduce_1d(
+    f, op, src::AbstractGPUArray;
     init,
 
     block_size::Int=256,
-    temp::Union{Nothing, AbstractGPUVector}=nothing,
+    temp::Union{Nothing, AbstractGPUArray}=nothing,
     switch_below::Int=0,
 )
     @argcheck 1 <= block_size <= 1024
@@ -98,21 +98,26 @@ function reduce(
     # Degenerate cases
     len = length(src)
     len == 0 && return init
-    len == 1 && return @allowscalar src[1]
+    len == 1 && return @allowscalar f(src[1])
     if len < switch_below
         h_src = Vector(src)
-        return Base.reduce(op, h_src, init=init)
+        return Base.mapreduce(f, op, h_src, init=init)
     end
+
+    # Figure out type for destination
+    dst_type = typeof(init)
 
     # Each thread will handle two elements
     num_per_block = 2 * block_size
     blocks = (len + num_per_block - 1) ÷ num_per_block
 
     if !isnothing(temp)
+        @argcheck get_backend(temp) === get_backend(src)
+        @argcheck eltype(temp) === dst_type
         @argcheck length(temp) >= blocks * 2
         dst = temp
     else
-        dst = similar(src, eltype(src), blocks * 2)
+        dst = similar(src, dst_type, blocks * 2)
     end
 
     # Later the kernel will be compiled for views anyways, so use same types
@@ -120,17 +125,19 @@ function reduce(
     dst_view = @view dst[1:blocks]
 
     backend = get_backend(dst)
-    kernel! = _reduce_block!(backend, block_size)
-    kernel!(src_view, dst_view, op, init, ndrange=(block_size * blocks,))
-
-    len = blocks
-    if len < switch_below
-        h_src = Vector(@view(dst[1:len]))
-        return Base.reduce(op, h_src, init=init)
-    end
+    kernel! = _mapreduce_block!(backend, block_size)
+    kernel!(src_view, dst_view, f, op, init, ndrange=(block_size * blocks,))
 
     # As long as we still have blocks to process, swap between the src and dst pointers at
     # the beginning of the first and second halves of dst
+    len = blocks
+    if len < switch_below
+        h_src = Vector(@view(dst[1:len]))
+        return Base.mapreduce(f, op, h_src, init=init)
+    end
+
+    # Now all src elements have been passed through f; just do final reduction, no map needed
+    kernel2! = _reduce_block!(backend, block_size)
     p1 = @view dst[1:len]
     p2 = @view dst[blocks + 1:end]
 
@@ -138,7 +145,7 @@ function reduce(
         blocks = (len + num_per_block - 1) ÷ num_per_block
 
         # Each block produces one reduced value
-        kernel!(p1, p2, op, init, ndrange=(block_size * blocks,))
+        kernel2!(p1, p2, op, init, ndrange=(block_size * blocks,))
         len = blocks
 
         if len < switch_below
@@ -154,11 +161,11 @@ function reduce(
 end
 
 
-function reduce(
-    op, src::AbstractVector;
+function mapreduce(
+    f, op, src::AbstractVector;
     init,
 )
     # Fallback to Base
-    Base.reduce(op, src; init=init)
+    Base.mapreduce(f, op, src; init=init)
 end
 

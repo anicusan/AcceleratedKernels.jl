@@ -22,6 +22,7 @@ makedocs(;
         "Manual" =>[
             "Using Different Backends" => "api/using_backends.md",
             "General Loops" => "api/foreachindex.md",
+            "Map" => "api/map.md",
             "Sorting" => "api/sort.md",
             "Reduce" => "api/reduce.md",
             "MapReduce" => "api/mapreduce.md",

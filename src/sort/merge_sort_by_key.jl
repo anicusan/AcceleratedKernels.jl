@@ -217,7 +217,7 @@ function merge_sort_by_key!(
         end
     end
 
-    nothing
+    keys, values
 end
 
 
@@ -242,7 +242,5 @@ function merge_sort_by_key(
         lt=lt, by=by, rev=rev, order=order,
         block_size=block_size, temp_keys=temp_keys, temp_values=temp_values,
     )
-
-    keys_copy, values_copy
 end
 
