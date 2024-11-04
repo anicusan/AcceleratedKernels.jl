@@ -2,7 +2,7 @@
 
 *"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
-<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/) -->
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
 <!-- [![Build Status](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml?query=branch%3Amain) -->
 
@@ -41,7 +41,9 @@ Again, this is only possible because of the unique Julia compilation model, the 
 
 
 ## 2. Status
-This is the very first release of this library; while tests are included for all algorithms, I only ran them locally on the oneAPI (laptop Intel UHD Graphics 620), CUDA (laptop with Nvidia Quadro RTX 4000 and data centre Nvidia A100-40), Metal (Mac M2 and M3), and AMD (data centre AMD MI210) backends. Some kinks might still exist for some platform permutations before a CI is set up. The API may undergo some changes in the following weeks as we discuss it with the Julia community - please join the conversation!
+The AcceleratedKernels.jl sorters were adopted as the official [AMDGPU algorithms](https://github.com/JuliaGPU/AMDGPU.jl/pull/688)! The API is starting to stabilise; it follows the Julia standard library fairly closely - additionally exposing all temporary arrays for memory reuse. For any new ideas / requests, please join the conversation on [Julia Discourse](https://discourse.julialang.org/t/ann-acceleratedkernels-jl-cross-architecture-parallel-algorithms-for-julias-gpu-backends/119698/16) or post [an issue](https://github.com/anicusan/AcceleratedKernels.jl/issues).
+
+We have an extensive test suite; however, I only ran them locally on the oneAPI (laptop Intel UHD Graphics 620), CUDA (laptop with Nvidia Quadro RTX 4000 and data centre Nvidia A100-40), Metal (Mac M2 and M3), and AMD (data centre AMD MI210) backends. Some kinks might still exist for some platform / OS permutations before a CI is set up.
 
 AcceleratedKernels.jl will also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
 
