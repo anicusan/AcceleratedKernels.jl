@@ -37,6 +37,12 @@ function array_from_host(h_arr::AbstractArray, dtype=nothing)
 end
 
 
+@testset "Aqua" begin
+    using Aqua
+    Aqua.test_all(AK)
+end
+
+
 @testset "TaskPartitioner" begin
     # All tasks needed
     tp = AK.TaskPartitioner(10, 4, 1)

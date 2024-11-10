@@ -4,7 +4,9 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
-<!-- [![Build Status](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI.yml?query=branch%3Amain) -->
+[![CI-CPU](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml/badge.svg)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 Parallel algorithm building blocks for the Julia ecosystem, targeting multithreaded CPUs, and GPUs via Intel oneAPI, AMD ROCm, Apple Metal and Nvidia CUDA (and any future backends added to the [JuliaGPU](https://juliagpu.org/) organisation).
