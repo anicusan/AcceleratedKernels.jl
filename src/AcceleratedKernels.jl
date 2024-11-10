@@ -15,6 +15,7 @@ using ArgCheck
 using GPUArraysCore: AbstractGPUVector, AbstractGPUArray, @allowscalar
 using KernelAbstractions
 using Polyester: @batch
+import OhMyThreads as OMT
 using Unrolled
 using DocStringExtensions
 

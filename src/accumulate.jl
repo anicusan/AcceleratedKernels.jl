@@ -250,15 +250,45 @@ function accumulate!(
 end
 
 
-function accumulate(
+function accumulate!(
     op,
-    v::AbstractGPUVector;
+    v::AbstractVector;
     init,
     inclusive::Bool=true,
 
     block_size::Int=128,
-    temp::Union{Nothing, AbstractGPUVector}=nothing,
-    temp_flags::Union{Nothing, AbstractGPUVector}=nothing,
+    temp::Union{Nothing, AbstractVector}=nothing,
+    temp_flags::Union{Nothing, AbstractVector}=nothing,
+)
+    # Simple single-threaded CPU implementation - FIXME: implement taccumulate in OhMyThreads.jl
+    if length(v) == 0
+        return v
+    end
+    if inclusive
+        running = v[begin]
+        for i in firstindex(v) + 1:lastindex(v)
+            running = op(running, v[i])
+            v[i] = running
+        end
+    else
+        running = init
+        for i in eachindex(v)
+            v[i], running = running, op(running, v[i])
+        end
+
+    end
+end
+
+
+function accumulate(
+    op,
+    v::AbstractVector;
+    init,
+    inclusive::Bool=true,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractVector}=nothing,
+    temp_flags::Union{Nothing, AbstractVector}=nothing,
 )
     vcopy = copy(v)
     accumulate!(op, vcopy; init=init, inclusive=inclusive,

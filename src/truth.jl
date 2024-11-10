@@ -51,6 +51,17 @@ function any(
 end
 
 
+function any(
+    pred,
+    v::AbstractVector;
+    block_size::Int=256,
+    cooperative::Bool=true,
+)
+    # Fallback to Base
+    Base.any(pred, v)
+end
+
+
 function all(
     pred,
     v::AbstractGPUVector;
@@ -79,3 +90,13 @@ function all(
     end
 end
 
+
+function all(
+    pred,
+    v::AbstractVector;
+    block_size::Int=256,
+    cooperative::Bool=true,
+)
+    # Fallback to Base
+    Base.all(pred, v)
+end

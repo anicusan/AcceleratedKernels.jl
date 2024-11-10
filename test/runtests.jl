@@ -25,15 +25,8 @@ elseif "--Metal" in ARGS
     using Metal
     const backend = MetalBackend()
 else
-    throw(ArgumentError(
-        """
-        No backend was specified; supply a command-line argument to the test suite, e.g.:
-            julia> Pkg.test(test_args=["--oneAPI"])
-        Or:
-            bash> julia --project=. -e 'import Pkg; Pkg.test(test_args=["--oneAPI"])'
-        Where you can replace `"--oneAPI"` with `"--Metal"`, `"--CUDA"` or `"--AMDGPU"`.
-        """
-    ))
+    # Otherwise do CPU tests
+    const backend = CPU()
 end
 
 
@@ -92,52 +85,55 @@ end
     Random.seed!(0)
 
     # CPU
-    x = zeros(Int, 1000)
-    AK.foreachindex(x) do i
-        x[i] = i
-    end
-    @test all(x .== 1:length(x))
+    if backend == CPU()
+        x = zeros(Int, 1000)
+        AK.foreachindex(x) do i
+            x[i] = i
+        end
+        @test all(x .== 1:length(x))
 
-    x = zeros(Int, 1000)
-    AK.foreachindex(x, max_tasks=1, min_elems=1) do i
-        x[i] = i
-    end
-    @test all(x .== 1:length(x))
+        x = zeros(Int, 1000)
+        AK.foreachindex(x, max_tasks=1, min_elems=1) do i
+            x[i] = i
+        end
+        @test all(x .== 1:length(x))
 
-    x = zeros(Int, 1000)
-    AK.foreachindex(x, max_tasks=10, min_elems=1) do i
-        x[i] = i
-    end
-    @test all(x .== 1:length(x))
+        x = zeros(Int, 1000)
+        AK.foreachindex(x, max_tasks=10, min_elems=1) do i
+            x[i] = i
+        end
+        @test all(x .== 1:length(x))
 
-    x = zeros(Int, 1000)
-    AK.foreachindex(x, max_tasks=10, min_elems=10, scheduler=:threads) do i
-        x[i] = i
-    end
-    @test all(x .== 1:length(x))
+        x = zeros(Int, 1000)
+        AK.foreachindex(x, max_tasks=10, min_elems=10, scheduler=:threads) do i
+            x[i] = i
+        end
+        @test all(x .== 1:length(x))
 
-    x = zeros(Int, 1000)
-    AK.foreachindex(x, max_tasks=10, min_elems=10, scheduler=:polyester) do i
-        x[i] = i
-    end
-    @test all(x .== 1:length(x))
+        x = zeros(Int, 1000)
+        AK.foreachindex(x, max_tasks=10, min_elems=10, scheduler=:polyester) do i
+            x[i] = i
+        end
+        @test all(x .== 1:length(x))
 
     # GPU
-    x = array_from_host(zeros(Int, 10_000))
-    f1(x) = AK.foreachindex(x) do i     # This must be inside a function to have a known type!
-        x[i] = i
-    end
-    f1(x)
-    xh = Array(x)
-    @test all(xh .== 1:length(xh))
+    else
+        x = array_from_host(zeros(Int, 10_000))
+        f1(x) = AK.foreachindex(x) do i     # This must be inside a function to have a known type!
+            x[i] = i
+        end
+        f1(x)
+        xh = Array(x)
+        @test all(xh .== 1:length(xh))
 
-    x = array_from_host(zeros(Int, 10_000))
-    f2(x) = AK.foreachindex(x, block_size=64) do i
-        x[i] = i
+        x = array_from_host(zeros(Int, 10_000))
+        f2(x) = AK.foreachindex(x, block_size=64) do i
+            x[i] = i
+        end
+        f2(x)
+        xh = Array(x)
+        @test all(xh .== 1:length(xh))
     end
-    f2(x)
-    xh = Array(x)
-    @test all(xh .== 1:length(xh))
 end
 
 
@@ -145,53 +141,57 @@ end
     Random.seed!(0)
 
     # CPU
-    x = Array(1:1000)
-    y = AK.map(x) do i
-        i^2
-    end
-    @test y == map(i -> i^2, x)
+    if backend == CPU()
+        x = Array(1:1000)
+        y = AK.map(x) do i
+            i^2
+        end
+        @test y == map(i -> i^2, x)
 
-    x = Array(1:1000)
-    y = zeros(Int, 1000)
-    AK.map!(y, x) do i
-        i^2
-    end
-    @test y == map(i -> i^2, x)
+        x = Array(1:1000)
+        y = zeros(Int, 1000)
+        AK.map!(y, x) do i
+            i^2
+        end
+        @test y == map(i -> i^2, x)
 
-    x = rand(Float32, 1000)
-    y = AK.map(x, scheduler=:threads, max_tasks=2, min_elems=100) do i
-        i > 0.5 ? i : 0
-    end
-    @test y == map(i -> i > 0.5 ? i : 0, x)
+        x = rand(Float32, 1000)
+        y = AK.map(x, scheduler=:threads, max_tasks=2, min_elems=100) do i
+            i > 0.5 ? i : 0
+        end
+        @test y == map(i -> i > 0.5 ? i : 0, x)
 
-    x = rand(Float32, 1000)
-    y = AK.map(x, scheduler=:polyester, max_tasks=4, min_elems=500) do i
-        i > 0.5 ? i : 0
-    end
-    @test y == map(i -> i > 0.5 ? i : 0, x)
+        x = rand(Float32, 1000)
+        y = AK.map(x, scheduler=:polyester, max_tasks=4, min_elems=500) do i
+            i > 0.5 ? i : 0
+        end
+        @test y == map(i -> i > 0.5 ? i : 0, x)
 
     # GPU
-    x = array_from_host(1:1000)
-    y = AK.map(x) do i
-        i^2
-    end
-    @test Array(y) == map(i -> i^2, 1:1000)
+    else
+        x = array_from_host(1:1000)
+        y = AK.map(x) do i
+            i^2
+        end
+        @test Array(y) == map(i -> i^2, 1:1000)
 
-    x = array_from_host(1:1000)
-    y = array_from_host(zeros(Int, 1000))
-    AK.map!(y, x) do i
-        i^2
-    end
-    @test Array(y) == map(i -> i^2, 1:1000)
+        x = array_from_host(1:1000)
+        y = array_from_host(zeros(Int, 1000))
+        AK.map!(y, x) do i
+            i^2
+        end
+        @test Array(y) == map(i -> i^2, 1:1000)
 
-    x = array_from_host(rand(Float32, 1000))
-    y = AK.map(x, block_size=64) do i
-        i > 0.5 ? i : 0
+        x = array_from_host(rand(Float32, 1000))
+        y = AK.map(x, block_size=64) do i
+            i > 0.5 ? i : 0
+        end
+        @test Array(y) == map(i -> i > 0.5 ? i : 0, Array(x))
     end
-    @test Array(y) == map(i -> i > 0.5 ? i : 0, Array(x))
 end
 
 
+if backend != CPU()
 @testset "merge_sort" begin
     Random.seed!(0)
 
@@ -223,23 +223,24 @@ end
     # Testing different settings
     v = array_from_host(1:10_000, Float32)
     AK.merge_sort!(v, lt=(>), by=abs, rev=true,
-                   block_size=64, temp=array_from_host(1:10_000, Float32))
+                block_size=64, temp=array_from_host(1:10_000, Float32))
     @test issorted(Array(v))
 
     v = array_from_host(1:10_000, Int32)
     AK.merge_sort!(v, lt=(>), rev=true,
-                   block_size=64, temp=array_from_host(1:10_000, Int32))
+                block_size=64, temp=array_from_host(1:10_000, Int32))
     @test issorted(Array(v))
 
     v = array_from_host(1:10_000, Float32)
     AK.merge_sort(v, lt=(>), by=abs, rev=true,
-                  block_size=64, temp=array_from_host(1:10_000, Float32))
+                block_size=64, temp=array_from_host(1:10_000, Float32))
     @test issorted(Array(v))
 
     v = array_from_host(1:10_000, Int32)
     AK.merge_sort(v, lt=(>), by=abs, rev=true,
-                  block_size=64, temp=array_from_host(1:10_000, Int32))
+                block_size=64, temp=array_from_host(1:10_000, Int32))
     @test issorted(Array(v))
+end
 end
 
 
@@ -294,6 +295,7 @@ end
 end
 
 
+if backend != CPU()
 @testset "merge_sort_by_key" begin
     Random.seed!(0)
 
@@ -335,45 +337,47 @@ end
     k = array_from_host(1:10_000, Float32)
     v = array_from_host(1:10_000, Int32)
     AK.merge_sort_by_key!(k, v,
-                          lt=(>), by=abs, rev=true,
-                          block_size=64,
-                          temp_keys=array_from_host(1:10_000, Float32),
-                          temp_values=array_from_host(1:10_000, Int32))
+                        lt=(>), by=abs, rev=true,
+                        block_size=64,
+                        temp_keys=array_from_host(1:10_000, Float32),
+                        temp_values=array_from_host(1:10_000, Int32))
     @test issorted(Array(k))
     @test issorted(Array(v))
 
     k = array_from_host(1:10_000, Int32)
     v = array_from_host(1:10_000, Float32)
     AK.merge_sort_by_key!(k, v,
-                          lt=(>), by=abs, rev=true,
-                          block_size=64,
-                          temp_keys=array_from_host(1:10_000, Int32),
-                          temp_values=array_from_host(1:10_000, Float32))
+                        lt=(>), by=abs, rev=true,
+                        block_size=64,
+                        temp_keys=array_from_host(1:10_000, Int32),
+                        temp_values=array_from_host(1:10_000, Float32))
     @test issorted(Array(k))
     @test issorted(Array(v))
 
     k = array_from_host(1:10_000, Float32)
     v = array_from_host(1:10_000, Int32)
     AK.merge_sort_by_key(k, v,
-                         lt=(>), by=abs, rev=true,
-                         block_size=64,
-                         temp_keys=array_from_host(1:10_000, Float32),
-                         temp_values=array_from_host(1:10_000, Int32))
+                        lt=(>), by=abs, rev=true,
+                        block_size=64,
+                        temp_keys=array_from_host(1:10_000, Float32),
+                        temp_values=array_from_host(1:10_000, Int32))
     @test issorted(Array(k))
     @test issorted(Array(v))
 
     k = array_from_host(1:10_000, Int32)
     v = array_from_host(1:10_000, Float32)
     AK.merge_sort_by_key(k, v,
-                         lt=(>), by=abs, rev=true,
-                         block_size=64,
-                         temp_keys=array_from_host(1:10_000, Int32),
-                         temp_values=array_from_host(1:10_000, Float32))
+                        lt=(>), by=abs, rev=true,
+                        block_size=64,
+                        temp_keys=array_from_host(1:10_000, Int32),
+                        temp_values=array_from_host(1:10_000, Float32))
     @test issorted(Array(k))
     @test issorted(Array(v))
 end
+end
 
 
+if backend != CPU()
 @testset "merge_sortperm" begin
     Random.seed!(0)
 
@@ -412,27 +416,29 @@ end
     ix = array_from_host(1:10_000, Int32)
     v = array_from_host(1:10_000, Float32)
     AK.merge_sortperm!(ix,
-                       v,
-                       lt=(>), by=abs, rev=true,
-                       inplace=true, block_size=64,
-                       temp_ix=array_from_host(1:10_000, Int32),
-                       temp_v=array_from_host(1:10_000, Float32))
+                    v,
+                    lt=(>), by=abs, rev=true,
+                    inplace=true, block_size=64,
+                    temp_ix=array_from_host(1:10_000, Int32),
+                    temp_v=array_from_host(1:10_000, Float32))
     ixh = Array(ix)
     vh = Array(v)
     @test issorted(vh[ixh])
 
     v = array_from_host(1:10_000, Float32)
     ix = AK.merge_sortperm(v,
-                           lt=(>), by=abs, rev=true,
-                           inplace=true, block_size=64,
-                           temp_ix=array_from_host(1:10_000, Int),
-                           temp_v=array_from_host(1:10_000, Float32))
+                        lt=(>), by=abs, rev=true,
+                        inplace=true, block_size=64,
+                        temp_ix=array_from_host(1:10_000, Int),
+                        temp_v=array_from_host(1:10_000, Float32))
     ixh = Array(ix)
     vh = Array(v)
     @test issorted(vh[ixh])
 end
+end
 
 
+if backend != CPU()
 @testset "merge_sortperm_lowmem" begin
     Random.seed!(0)
 
@@ -471,22 +477,23 @@ end
     ix = array_from_host(1:10_000, Int32)
     v = array_from_host(1:10_000, Float32)
     AK.merge_sortperm_lowmem!(ix,
-                              v,
-                              lt=(>), by=abs, rev=true,
-                              block_size=64,
-                              temp=array_from_host(1:10_000, Int32))
+                            v,
+                            lt=(>), by=abs, rev=true,
+                            block_size=64,
+                            temp=array_from_host(1:10_000, Int32))
     ixh = Array(ix)
     vh = Array(v)
     @test issorted(vh[ixh])
 
     v = array_from_host(1:10_000, Float32)
     ix = AK.merge_sortperm_lowmem(v,
-                                  lt=(>), by=abs, rev=true,
-                                  block_size=64,
-                                  temp=array_from_host(1:10_000, Int))
+                                lt=(>), by=abs, rev=true,
+                                block_size=64,
+                                temp=array_from_host(1:10_000, Int))
     ixh = Array(ix)
     vh = Array(v)
     @test issorted(vh[ixh])
+end
 end
 
 
@@ -637,11 +644,17 @@ end
         block_size=64,
         temp=array_from_host(zeros(Int32, 10_000)),
         switch_below=50,
+        scheduler=:dynamic,
+        max_tasks=10,
+        min_elems=100,
     )
     AK.reduce(
         (x, y) -> x + 1,
         rand(Int32, 10_000),
         init=Int64(0),
+        scheduler=:greedy,
+        max_tasks=16,
+        min_elems=1000,
     )
 end
 
@@ -714,6 +727,9 @@ end
         block_size=64,
         temp=array_from_host(zeros(Int32, 3, 1, 5)),
         switch_below=50,
+        scheduler=:dynamic,
+        max_tasks=10,
+        min_elems=100,
     )
     AK.reduce(
         (x, y) -> x + 1,
@@ -723,6 +739,9 @@ end
         block_size=64,
         temp=array_from_host(zeros(Int32, 3, 4, 1)),
         switch_below=50,
+        scheduler=:greedy,
+        max_tasks=16,
+        min_elems=1000,
     )
 end
 
@@ -799,6 +818,9 @@ end
         block_size=64,
         temp=temp,
         switch_below=50,
+        scheduler=:dynamic,
+        max_tasks=10,
+        min_elems=100,
     )
     v = array_from_host([Point(rand(Float32), rand(Float32)) for _ in 1:10_042])
     temp = similar(v, Tuple{Float32, Float32})
@@ -900,6 +922,9 @@ end
         block_size=64,
         temp=array_from_host(zeros(Int32, 3, 1, 5)),
         switch_below=50,
+        scheduler=:dynamic,
+        max_tasks=10,
+        min_elems=100,
     )
     AK.mapreduce(
         -,
@@ -910,6 +935,9 @@ end
         block_size=64,
         temp=array_from_host(zeros(Int32, 3, 4, 1)),
         switch_below=50,
+        scheduler=:greedy,
+        max_tasks=16,
+        min_elems=1000,
     )
 
 end

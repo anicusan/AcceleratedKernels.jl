@@ -21,5 +21,13 @@ AK.DocHelpers.readme_section("## 2. Status") # hide
 
 ---
 
+## Acknowledgements
+```@example
+import AcceleratedKernels as AK # hide
+AK.DocHelpers.readme_section("## 11. Acknowledgements") # hide
+```
+
+---
+
 ## License
 AcceleratedKernels.jl is MIT-licensed. Enjoy.

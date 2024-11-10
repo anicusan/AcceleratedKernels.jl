@@ -1,3 +1,19 @@
+"""
+    map!(
+        f, dst::AbstractArray, src::AbstractArray;
+
+        # CPU settings
+        scheduler=:threads,
+        max_tasks=Threads.nthreads(),
+        min_elems=1,
+
+        # GPU settings
+        block_size=256,    
+    )
+
+Apply the function `f` to each element of `src` and store the result in `dst`. The CPU and GPU
+settings are the same as for [`foreachindex`](@ref).
+"""
 function map!(
     f, dst::AbstractArray, src::AbstractArray;
 

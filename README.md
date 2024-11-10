@@ -75,7 +75,7 @@ Below is an overview of the currently-implemented algorithms, along with some co
 | Function Family                               | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
 | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
 | [General Looping](#52-foreachindex)           | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
-| [General Looping](#53-map)                    | `map` `map!`                                     | `thrust::transform`                                       |
+| [Mapping](#53-map)                            | `map` `map!`                                     | `thrust::transform`                                       |
 | [Sorting](#54-sort-and-friends)               | `sort` `sort!`                                   | `sort` `sort_team` `stable_sort`                          |
 |                                               | `merge_sort` `merge_sort!`                       |                                                           |
 |                                               | `merge_sort_by_key` `merge_sort_by_key!`         | `sort_team_by_key`                                        |
@@ -117,6 +117,18 @@ v = CuArray{UInt32}(0:5:100_000)                # Range with explicit step size
 # Transfer GPU array back
 v_host = Array(v)
 ```
+
+All publicly-exposed functions have CPU implementations with unified parameter interfaces:
+
+```julia
+import AcceleratedKernels as AK
+v = Vector(-1000:1000)                          # Normal CPU array
+AK.reduce(+, v, max_tasks=Threads.nthreads())
+```
+
+Note the `reduce` and `mapreduce` CPU implementations forward arguments to [OhMyThreads.jl](https://github.com/JuliaFolds2/OhMyThreads.jl), an excellent package for multithreading. The focus of AcceleratedKernels.jl is to provide a unified interface to high-performance implementations of common algorithmic kernels, for both CPUs and GPUs - if you need fine-grained control over threads, scheduling, communication for specialised algorithms (e.g. with highly unequal workloads), consider using [OhMyThreads.jl](https://github.com/JuliaFolds2/OhMyThreads.jl) or [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) directly.
+
+There is ongoing work on multithreaded CPU `sort` and `accumulate` implementations - at the moment, they fall back to single-threaded algorithms; the rest of the library is fully parallelised for both CPUs and GPUs.
 
 
 ### 5.2. `foreachindex`
@@ -323,10 +335,16 @@ Apply a custom binary operator reduction on all elements in an iterable; can be 
 Function signature:
 ```julia
 reduce(
-    op, src::AbstractGPUArray;
+    op, src::AbstractArray;
     init,
     dims::Union{Nothing, Int}=nothing,
 
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
     block_size::Int=256,
     temp::Union{Nothing, AbstractGPUArray}=nothing,
     switch_below::Int=0,
@@ -342,7 +360,7 @@ v = CuArray{Int16}(rand(1:1000, 100_000))
 AK.reduce((x, y) -> x + y, v; init=0)
 ```
 
-In a reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there (in a reduction we have to do a device-to-host transfer anyways for the final result); `switch_below` may be worth using (benchmark!) - here computing a minimum with the reduction operator defined in a Julia `do` block:
+In a GPU scalar reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there (in a reduction we have to do a device-to-host transfer anyways for the final result); `switch_below` may be worth using (benchmark!) - here computing a minimum with the reduction operator defined in a Julia `do` block:
 ```julia
 AK.reduce(v; init=typemax(eltype(v)), switch_below=100) do x, y
     x < y ? x : y
@@ -361,12 +379,18 @@ Equivalent to `reduce(op, map(f, iterable))`, without saving the intermediate ma
 Function signature:
 ```julia
 mapreduce(
-    f, op, src::AbstractGPUArray;
+    f, op, src::AbstractArray;
     init,
     dims::Union{Nothing, Int}=nothing,
 
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
     block_size::Int=256,
-    temp::Union{Nothing, AbstractGPUArray}=nothing,
+    temp::Union{Nothing, AbstractArray}=nothing,
     switch_below::Int=0,
 )
 ```
@@ -392,11 +416,11 @@ Function signature:
 ```julia
 accumulate!(op, v::AbstractGPUVector; init, inclusive::Bool=true,
             block_size::Int=128,
-            temp_v::Union{Nothing, AbstractGPUVector}=nothing,
+            temp::Union{Nothing, AbstractGPUVector}=nothing,
             temp_flags::Union{Nothing, AbstractGPUVector}=nothing)
 accumulate(op, v::AbstractGPUVector; init, inclusive::Bool=true,
            block_size::Int=128,
-           temp_v::Union{Nothing, AbstractGPUVector}=nothing,
+           temp::Union{Nothing, AbstractGPUVector}=nothing,
            temp_flags::Union{Nothing, AbstractGPUVector}=nothing)
 ```
 
@@ -409,7 +433,7 @@ v = oneAPI.ones(Int32, 100_000)
 AK.accumulate!(+, v, init=0)
 ```
 
-The temporaries `temp_v` and `temp_flags` should both have at least `(length(v) + 2 * block_size - 1) ÷ (2 * block_size)` elements; `eltype(v) === eltype(temp_v)`; the elements in `temp_flags` can be any integers, but `Int8` is used by default to reduce memory usage. 
+The temporaries `temp` and `temp_flags` should both have at least `(length(v) + 2 * block_size - 1) ÷ (2 * block_size)` elements; `eltype(v) === eltype(temp)`; the elements in `temp_flags` can be any integers, but `Int8` is used by default to reduce memory usage. 
 
 
 ### 5.8. `searchsorted` and friends
@@ -529,6 +553,11 @@ $> julia -e 'import Pkg; Pkg.test("AcceleratedKernels.jl", test_args=["--oneAPI"
 
 Replace the `"--oneAPI"` with `"--CUDA"`, `"--AMDGPU"` or `"--Metal"` to test different backends, as available on your machine.
 
+Leave out to test the CPU backend:
+```bash
+$> julia -e 'import Pkg; Pkg.test("AcceleratedKernels.jl")
+```
+
 **TODO**: talk with the JuliaGPU team to add library to their [BuildKite agents](https://github.com/JuliaGPU/buildkite) CI.
 
 
@@ -585,6 +614,8 @@ While the algorithms themselves were implemented anew, multiple existing librari
 
 
 ## 11. Acknowledgements
+Designed and built by [Andrei-Leonard Nicusan](https://github.com/anicusan), maintained with [contributors](https://github.com/anicusan/AcceleratedKernels.jl/graphs/contributors).
+
 Much of this work was possible because of the fantastic HPC resources at the University of Birmingham and the Birmingham Environment for Academic Research, which gave us free on-demand access to thousands of CPUs and GPUs that we experimented on, and the support teams we nagged. In particular, thank you to Kit Windows-Yule and Andrew Morris on the BlueBEAR and Baskerville T2 supercomputers' leadership, and Simon Branford, Simon Hartley, James Allsopp and James Carpenter for computing support.
 
 

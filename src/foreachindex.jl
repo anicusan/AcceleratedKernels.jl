@@ -1,7 +1,6 @@
-@kernel function _foreachindex_global!(f, indices)
+@kernel cpu=false inbounds=true function _foreachindex_global!(f, indices)
     i = @index(Global, Linear)
-    itr_index = @inbounds indices[i]
-    f(itr_index)
+    f(indices[i])
 end
 
 

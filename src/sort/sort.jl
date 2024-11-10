@@ -28,6 +28,22 @@ function sort!(
 end
 
 
+function sort!(
+    v::AbstractVector;
+
+    lt=isless,
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractVector}=nothing,
+)
+    # Fallback to Base before we have a CPU parallel sort
+    Base.sort!(v; lt=lt, by=by, rev=rev, order=order)
+end
+
+
 function sort(
     v::AbstractGPUVector;
 
@@ -44,6 +60,22 @@ function sort(
         lt=lt, by=by, rev=rev, order=order,
         block_size=block_size, temp=temp,
     )
+end
+
+
+function sort(
+    v::AbstractVector;
+
+    lt=isless,
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractVector}=nothing,
+)
+    # Fallback to Base before we have a CPU parallel sort
+    Base.sort(v; lt=lt, by=by, rev=rev, order=order)
 end
 
 
@@ -67,6 +99,23 @@ function sortperm!(
 end
 
 
+function sortperm!(
+    ix::AbstractVector,
+    v::AbstractVector;
+
+    lt=isless,
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractVector}=nothing,
+)
+    # Fallback to Base before we have a CPU parallel sortperm
+    Base.sortperm!(ix, v; lt=lt, by=by, rev=rev, order=order)
+end
+
+
 function sortperm(
     v::AbstractGPUVector;
 
@@ -83,4 +132,20 @@ function sortperm(
         lt=lt, by=by, rev=rev, order=order,
         block_size=block_size, temp=temp,
     )
+end
+
+
+function sortperm(
+    v::AbstractVector;
+
+    lt=isless,
+    by=identity,
+    rev::Bool=false,
+    order::Base.Order.Ordering=Base.Order.Forward,
+
+    block_size::Int=128,
+    temp::Union{Nothing, AbstractVector}=nothing,
+)
+    # Fallback to Base before we have a CPU parallel sortperm
+    Base.sortperm(v; lt=lt, by=by, rev=rev, order=order)
 end

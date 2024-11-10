@@ -159,13 +159,3 @@ function mapreduce_1d(
 
     return @allowscalar p1[1]
 end
-
-
-function mapreduce(
-    f, op, src::AbstractVector;
-    init,
-)
-    # Fallback to Base
-    Base.mapreduce(f, op, src; init=init)
-end
-

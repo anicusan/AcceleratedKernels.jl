@@ -7,10 +7,16 @@ include("mapreduce_nd.jl")
 
 """
     reduce(
-        op, src::AbstractGPUArray;
+        op, src::AbstractArray;
         init,
         dims::Union{Nothing, Int}=nothing,
 
+        # CPU settings
+        scheduler=:static,
+        max_tasks=Threads.nthreads(),
+        min_elems=1,
+
+        # GPU settings
         block_size::Int=256,
         temp::Union{Nothing, AbstractGPUArray}=nothing,
         switch_below::Int=0,
@@ -20,6 +26,15 @@ Reduce `src` along dimensions `dims` using the binary operator `op`. If `dims` i
 `src` to a scalar. If `dims` is an integer, reduce `src` along that dimension. The `init` value is
 used as the initial value for the reduction.
 
+## CPU settings
+The `scheduler` can be one of the [OhMyThreads.jl schedulers](https://juliafolds2.github.io/OhMyThreads.jl/dev/refs/api/#Schedulers),
+i.e. `:static`, `:dynamic`, `:greedy` or `:serial`. Assuming the workload is uniform (as the GPU
+algorithm prefers), `:static` is used by default; if you need fine-grained control over your
+threads, consider using [`OhMyThreads.jl`](https://github.com/JuliaFolds2/OhMyThreads.jl) directly.
+
+Use at most `max_tasks` threads with at least `min_elems` elements per task.
+
+## GPU settings
 The `block_size` parameter controls the number of threads per block.
 
 The `temp` parameter can be used to pass a pre-allocated temporary array. For reduction to a scalar
@@ -57,6 +72,12 @@ function reduce(
     init,
     dims::Union{Nothing, Int}=nothing,
 
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
     block_size::Int=256,
     temp::Union{Nothing, AbstractGPUArray}=nothing,
     switch_below::Int=0,
@@ -85,11 +106,31 @@ function reduce(
     op, src::AbstractArray;
     init,
     dims::Union{Nothing, Int}=nothing,
+
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size::Int=256,
+    temp::Union{Nothing, AbstractArray}=nothing,
+    switch_below::Int=0,
 )
-    # Fallback to Base
     if isnothing(dims)
-        return Base.reduce(op, src; init=init)
+        num_elems = length(src)
+        num_tasks = min(max_tasks, num_elems ÷ min_elems)
+        if num_tasks <= 1
+            return Base.reduce(op, src; init=init)
+        end
+        return OMT.treduce(
+            op, src, init=init,
+            scheduler=scheduler,
+            outputtype=typeof(init),
+            nchunks=num_tasks,
+        )
     else
+        # FIXME: waiting on OhMyThreads.jl for n-dimensional reduction
         return Base.reduce(op, src; init=init, dims=dims)
     end
 end
@@ -97,12 +138,18 @@ end
 
 """
     mapreduce(
-        f, op, src::AbstractGPUArray;
+        f, op, src::AbstractArray;
         init,
         dims::Union{Nothing, Int}=nothing,
 
+        # CPU settings
+        scheduler=:static,
+        max_tasks=Threads.nthreads(),
+        min_elems=1,
+
+        # GPU settings
         block_size::Int=256,
-        temp::Union{Nothing, AbstractGPUArray}=nothing,
+        temp::Union{Nothing, AbstractArray}=nothing,
         switch_below::Int=0,
     )
 
@@ -110,6 +157,15 @@ Reduce `src` along dimensions `dims` using the binary operator `op` after applyi
 If `dims` is `nothing`, reduce `src` to a scalar. If `dims` is an integer, reduce `src` along that
 dimension. The `init` value is used as the initial value for the reduction (i.e. after mapping).
 
+## CPU settings
+The `scheduler` can be one of the [OhMyThreads.jl schedulers](https://juliafolds2.github.io/OhMyThreads.jl/dev/refs/api/#Schedulers),
+i.e. `:static`, `:dynamic`, `:greedy` or `:serial`. Assuming the workload is uniform (as the GPU
+algorithm prefers), `:static` is used by default; if you need fine-grained control over your
+threads, consider using [`OhMyThreads.jl`](https://github.com/JuliaFolds2/OhMyThreads.jl) directly.
+
+Use at most `max_tasks` threads with at least `min_elems` elements per task.
+
+## GPU settings
 The `block_size` parameter controls the number of threads per block.
 
 The `temp` parameter can be used to pass a pre-allocated temporary array. For reduction to a scalar
@@ -148,6 +204,12 @@ function mapreduce(
     init,
     dims::Union{Nothing, Int}=nothing,
 
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
     block_size::Int=256,
     temp::Union{Nothing, AbstractGPUArray}=nothing,
     switch_below::Int=0,
@@ -176,11 +238,31 @@ function mapreduce(
     f, op, src::AbstractArray;
     init,
     dims::Union{Nothing, Int}=nothing,
+
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size::Int=256,
+    temp::Union{Nothing, AbstractArray}=nothing,
+    switch_below::Int=0,
 )
-    # Fallback to Base
     if isnothing(dims)
-        return Base.mapreduce(f, op, src; init=init)
+        num_elems = length(src)
+        num_tasks = min(max_tasks, num_elems ÷ min_elems)
+        if num_tasks <= 1
+            return Base.mapreduce(f, op, src; init=init)
+        end
+        return OMT.tmapreduce(
+            f, op, src, init=init,
+            scheduler=scheduler,
+            outputtype=typeof(init),
+            nchunks=num_tasks,
+        )
     else
+        # FIXME: waiting on OhMyThreads.jl for n-dimensional reduction
         return Base.mapreduce(f, op, src; init=init, dims=dims)
     end
 end

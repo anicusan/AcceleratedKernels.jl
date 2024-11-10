@@ -53,17 +53,6 @@ struct TaskPartitioner
     # Computed
     num_tasks::Int
     task_istarts::Vector{Int}
-
-    # Full inner constructor
-    function TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks, task_istarts)
-        new(num_elems, max_tasks, min_elems, num_tasks, task_istarts)
-    end
-
-    # Incomplete constructor, not defining the task_istarts vector in case of single task
-    function TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks)
-        num_tasks == 1 || throw(ArgumentError("incomplete constructor is only for num_tasks == 1"))
-        new(num_elems, max_tasks, min_elems, 1)
-    end
 end
 
 
@@ -77,7 +66,7 @@ function TaskPartitioner(num_elems, max_tasks=Threads.nthreads(), min_elems=1)
     num_tasks = min(max_tasks, num_elems ÷ min_elems)
     if num_tasks <= 1
         num_tasks = 1
-        return TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks)
+        return TaskPartitioner(num_elems, max_tasks, min_elems, num_tasks, Int[])
     end
 
     # Each task gets at least (num_elems ÷ num_tasks) elements; the remaining are redistributed
@@ -100,7 +89,7 @@ function Base.getindex(tp::TaskPartitioner, itask::Integer)
 
     @boundscheck 1 <= itask <= tp.num_tasks || throw(BoundsError(tp, itask))
 
-    # Special-cased for single task, in which case tp.task_istarts was not defined / allocated
+    # Special-cased for single task, in which case tp.task_istarts is empty
     if tp.num_tasks == 1
         return 1:tp.num_elems
     end
