@@ -7,10 +7,16 @@
 <p><strong>New in AcceleratedKernels 0.2.0: N-dimensional reductions via the <code>dims</code> keyword</strong></p>
 <p>Function signature:</p>
 <pre><code class="language-julia">reduce&#40;
-    op, src::AbstractGPUArray;
+    op, src::AbstractArray;
     init,
     dims::Union&#123;Nothing, Int&#125;&#61;nothing,
 
+    # CPU settings
+    scheduler&#61;:static,
+    max_tasks&#61;Threads.nthreads&#40;&#41;,
+    min_elems&#61;1,
+
+    # GPU settings
     block_size::Int&#61;256,
     temp::Union&#123;Nothing, AbstractGPUArray&#125;&#61;nothing,
     switch_below::Int&#61;0,
@@ -21,20 +27,26 @@ using CUDA
 
 v &#61; CuArray&#123;Int16&#125;&#40;rand&#40;1:1000, 100_000&#41;&#41;
 AK.reduce&#40;&#40;x, y&#41; -&gt; x &#43; y, v; init&#61;0&#41;</code></pre>
-<p>In a reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there &#40;in a reduction we have to do a device-to-host transfer anyways for the final result&#41;; <code>switch_below</code> may be worth using &#40;benchmark&#33;&#41; - here computing a minimum with the reduction operator defined in a Julia <code>do</code> block:</p>
+<p>In a GPU scalar reduction there end up being very few elements to process towards the end; it is sometimes faster to transfer the last few elements to the CPU and finish there &#40;in a reduction we have to do a device-to-host transfer anyways for the final result&#41;; <code>switch_below</code> may be worth using &#40;benchmark&#33;&#41; - here computing a minimum with the reduction operator defined in a Julia <code>do</code> block:</p>
 <pre><code class="language-julia">AK.reduce&#40;v; init&#61;typemax&#40;eltype&#40;v&#41;&#41;, switch_below&#61;100&#41; do x, y
     x &lt; y ? x : y
 end</code></pre>
 <p>Yes, the lambda within the <code>do</code> block can equally well be executed on both CPU and GPU, no code changes/duplication required.</p>
 </div><hr/><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="AcceleratedKernels.reduce" href="#AcceleratedKernels.reduce"><code>AcceleratedKernels.reduce</code></a> — <span class="docstring-category">Function</span><span class="is-flex-grow-1 docstring-article-toggle-button" title="Collapse docstring"></span></header><section><div><pre><code class="language-julia hljs">reduce(
-    op, src::AbstractGPUArray;
+    op, src::AbstractArray;
     init,
     dims::Union{Nothing, Int}=nothing,
 
+    # CPU settings
+    scheduler=:static,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
     block_size::Int=256,
     temp::Union{Nothing, AbstractGPUArray}=nothing,
     switch_below::Int=0,
-)</code></pre><p>Reduce <code>src</code> along dimensions <code>dims</code> using the binary operator <code>op</code>. If <code>dims</code> is <code>nothing</code>, reduce <code>src</code> to a scalar. If <code>dims</code> is an integer, reduce <code>src</code> along that dimension. The <code>init</code> value is used as the initial value for the reduction.</p><p>The <code>block_size</code> parameter controls the number of threads per block.</p><p>The <code>temp</code> parameter can be used to pass a pre-allocated temporary array. For reduction to a scalar (<code>dims=nothing</code>), <code>length(temp) &gt;= 2 * (length(src) + 2 * block_size - 1) ÷ (2 * block_size)</code> is required. For reduction along a dimension (<code>dims</code> is an integer), <code>temp</code> is used as the destination array, and thus must have the exact dimensions required - i.e. same dimensionwise sizes as <code>src</code>, except for the reduced dimension which becomes 1; there are some corner cases when one dimension is zero, check against <code>Base.reduce</code> for CPU arrays for exact behavior.</p><p>The <code>switch_below</code> parameter controls the threshold below which the reduction is performed on the CPU and is only used for 1D reductions (i.e. <code>dims=nothing</code>).</p><p><strong>Example</strong></p><p>Computing a sum, reducing down to a scalar that is copied to host:</p><pre><code class="language-julia hljs">import AcceleratedKernels as AK
+)</code></pre><p>Reduce <code>src</code> along dimensions <code>dims</code> using the binary operator <code>op</code>. If <code>dims</code> is <code>nothing</code>, reduce <code>src</code> to a scalar. If <code>dims</code> is an integer, reduce <code>src</code> along that dimension. The <code>init</code> value is used as the initial value for the reduction.</p><p><strong>CPU settings</strong></p><p>The <code>scheduler</code> can be one of the <a href="https://juliafolds2.github.io/OhMyThreads.jl/dev/refs/api/#Schedulers">OhMyThreads.jl schedulers</a>, i.e. <code>:static</code>, <code>:dynamic</code>, <code>:greedy</code> or <code>:serial</code>. Assuming the workload is uniform (as the GPU algorithm prefers), <code>:static</code> is used by default; if you need fine-grained control over your threads, consider using <a href="https://github.com/JuliaFolds2/OhMyThreads.jl"><code>OhMyThreads.jl</code></a> directly.</p><p>Use at most <code>max_tasks</code> threads with at least <code>min_elems</code> elements per task.</p><p><strong>GPU settings</strong></p><p>The <code>block_size</code> parameter controls the number of threads per block.</p><p>The <code>temp</code> parameter can be used to pass a pre-allocated temporary array. For reduction to a scalar (<code>dims=nothing</code>), <code>length(temp) &gt;= 2 * (length(src) + 2 * block_size - 1) ÷ (2 * block_size)</code> is required. For reduction along a dimension (<code>dims</code> is an integer), <code>temp</code> is used as the destination array, and thus must have the exact dimensions required - i.e. same dimensionwise sizes as <code>src</code>, except for the reduced dimension which becomes 1; there are some corner cases when one dimension is zero, check against <code>Base.reduce</code> for CPU arrays for exact behavior.</p><p>The <code>switch_below</code> parameter controls the threshold below which the reduction is performed on the CPU and is only used for 1D reductions (i.e. <code>dims=nothing</code>).</p><p><strong>Example</strong></p><p>Computing a sum, reducing down to a scalar that is copied to host:</p><pre><code class="language-julia hljs">import AcceleratedKernels as AK
 using CUDA
 
 v = CuArray{Int16}(rand(1:1000, 100_000))
@@ -43,4 +55,4 @@ using Metal
 
 m = MtlArray(rand(Int32(1):Int32(100), 10, 100_000))
 mrowsum = AK.reduce(+, m; init=zero(eltype(m)), dims=1)
-mcolsum = AK.reduce(+, m; init=zero(eltype(m)), dims=2)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/anicusan/AcceleratedKernels.jl/blob/5068a6dce7e7badd97c0a8d6bda91bc9ff3f81b4/src/reduce/reduce.jl#L8-L54">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sort/">« Sorting</a><a class="docs-footer-nextpage" href="../mapreduce/">MapReduce »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Friday 8 November 2024 22:19">Friday 8 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+mcolsum = AK.reduce(+, m; init=zero(eltype(m)), dims=2)</code></pre></div><a class="docs-sourcelink" target="_blank" href="https://github.com/anicusan/AcceleratedKernels.jl/blob/4f9d37b55e6ff765a056d3b27d216b375ba1bd0f/src/reduce/reduce.jl#L8-L69">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sort/">« Sorting</a><a class="docs-footer-nextpage" href="../mapreduce/">MapReduce »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Sunday 10 November 2024 18:59">Sunday 10 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
