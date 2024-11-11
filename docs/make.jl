@@ -7,7 +7,7 @@ makedocs(;
     authors="Andrei-Leonard Nicusan <a.l.nicusan@gmail.com> and contributors",
     sitename="AcceleratedKernels.jl",
     format=Documenter.HTML(;
-        canonical="https://anicusan.github.io/AcceleratedKernels.jl",
+        canonical="https://juliagpu.github.io/KernelAbstractions.jl/",
         edit_link="main",
         assets=String[],
         sidebar_sitename=false,
@@ -41,6 +41,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/anicusan/AcceleratedKernels.jl",
+    repo="github.com/JuliaGPU/AcceleratedKernels.jl",
     devbranch="main",
 )

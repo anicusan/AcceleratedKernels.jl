@@ -1,10 +1,10 @@
-[![AcceleratedKernels.jl](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/banner.png?raw=true)](https://anicusan.github.io/AcceleratedKernels.jl)
+[![AcceleratedKernels.jl](https://github.com/juliagpu/AcceleratedKernels.jl/blob/main/docs/src/assets/banner.png?raw=true)](https://juliagpu.github.io/AcceleratedKernels.jl)
 
 *"We need more speed" - Lightning McQueen or Scarface, I don't know*
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://anicusan.github.io/AcceleratedKernels.jl/dev/)
-[![CI-CPU](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml/badge.svg)](https://github.com/anicusan/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliagpu.github.io/AcceleratedKernels.jl/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliagpu.github.io/AcceleratedKernels.jl/dev/)
+[![CI-CPU](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml/badge.svg)](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -43,7 +43,7 @@ Again, this is only possible because of the unique Julia compilation model, the 
 
 
 ## 2. Status
-The AcceleratedKernels.jl sorters were adopted as the official [AMDGPU algorithms](https://github.com/JuliaGPU/AMDGPU.jl/pull/688)! The API is starting to stabilise; it follows the Julia standard library fairly closely - additionally exposing all temporary arrays for memory reuse. For any new ideas / requests, please join the conversation on [Julia Discourse](https://discourse.julialang.org/t/ann-acceleratedkernels-jl-cross-architecture-parallel-algorithms-for-julias-gpu-backends/119698/16) or post [an issue](https://github.com/anicusan/AcceleratedKernels.jl/issues).
+The AcceleratedKernels.jl sorters were adopted as the official [AMDGPU algorithms](https://github.com/JuliaGPU/AMDGPU.jl/pull/688)! The API is starting to stabilise; it follows the Julia standard library fairly closely - additionally exposing all temporary arrays for memory reuse. For any new ideas / requests, please join the conversation on [Julia Discourse](https://discourse.julialang.org/t/ann-acceleratedkernels-jl-cross-architecture-parallel-algorithms-for-julias-gpu-backends/119698/16) or post [an issue](https://github.com/juliagpu/AcceleratedKernels.jl/issues).
 
 We have an extensive test suite; however, I only ran them locally on the oneAPI (laptop Intel UHD Graphics 620), CUDA (laptop with Nvidia Quadro RTX 4000 and data centre Nvidia A100-40), Metal (Mac M2 and M3), and AMD (data centre AMD MI210) backends. Some kinks might still exist for some platform / OS permutations before a CI is set up.
 
@@ -57,14 +57,14 @@ Some arithmetic-heavy benchmarks are given below - see [this repository](https:/
 
 See `protoype/sort_benchmark.jl` for a small-scale sorting benchmark code and `prototype/thrust_sort` for the Nvidia Thrust wrapper. The results below are from a system with Linux 6.6.30-2-MANJARO, Intel Core i9-10885H CPU, Nvidia Quadro RTX 4000 with Max-Q Design GPU, Thrust 1.17.1-1, Julia Version 1.10.4.
 
-![Sorting benchmark](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_benchmark.png?raw=true)
+![Sorting benchmark](https://github.com/juliagpu/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_benchmark.png?raw=true)
 
 As a first implementation in AcceleratedKernels.jl, we are on the same order of magnitude as Nvidia's official sorter (x3.48 slower), and an order of magnitude faster (x10.19) than the Julia Base CPU radix sort (which is already [one of the fastest](https://github.com/LilithHafner/InterLanguageSortingComparisons)).
 
 
 The sorting algorithms can also be combined with [`MPISort.jl`](https://github.com/anicusan/MPISort.jl) for multi-*device* sorting - indeed, you can co-operatively sort using **both** your CPU and GPU! Or use 200 GPUs on the 52 nodes of [Baskerville HPC](https://www.baskerville.ac.uk/) to sort 538-855 GB of data per second (comparable with the highest figure reported in literature of [900 GB/s on 262,144 CPU cores](http://dx.doi.org/10.1145/2464996.2465442)):
 
-![Sorting throughput](https://github.com/anicusan/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_throughput.png?raw=true)
+![Sorting throughput](https://github.com/juliagpu/AcceleratedKernels.jl/blob/main/docs/src/assets/sort_throughput.png?raw=true)
 
 Hardware stats for nerds [available here](https://docs.baskerville.ac.uk/system/). Full analysis will be linked here once our paper is published.
 
@@ -94,7 +94,7 @@ Below is an overview of the currently-implemented algorithms, along with some co
 
 ## 5. API Examples
 
-Here are simple examples using the AcceleratedKernels.jl algorithms to help you get started with it quickly; more details on the function arguments are given in the [Manual](https://anicusan.github.io/AcceleratedKernels.jl).
+Here are simple examples using the AcceleratedKernels.jl algorithms to help you get started with it quickly; more details on the function arguments are given in the [Manual](https://juliagpu.github.io/AcceleratedKernels.jl).
 
 
 ### 5.1. Using Different Backends
@@ -566,7 +566,7 @@ $> julia -e 'import Pkg; Pkg.test("AcceleratedKernels.jl")
 ## 8. Issues and Debugging
 As the compilation pipeline of GPU kernels is different to that of base Julia, error messages also look different - for example, where Julia would insert an exception when a variable name was not defined (e.g. we had a typo), a GPU kernel throwing exceptions cannot be compiled and instead you'll see some cascading errors like `"[...] compiling [...] resulted in invalid LLVM IR"` caused by `"Reason: unsupported use of an undefined name"` resulting in `"Reason: unsupported dynamic function invocation"`, etc.
 
-Thankfully, there are only about 3 types of such error messages and they're not that scary when you look into them. See the Manual section on [debugging](https://anicusan.github.io/AcceleratedKernels.jl/dev/debugging/) for examples and explanations.
+Thankfully, there are only about 3 types of such error messages and they're not that scary when you look into them. See the Manual section on [debugging](https://juliagpu.github.io/AcceleratedKernels.jl/dev/debugging/) for examples and explanations.
 
 For other library-related problems, feel free to post a GitHub issue. For help implementing new code, or just advice, you can also use the [Julia Discourse](https://discourse.julialang.org/c/domain/gpu/11) forum, the community is incredibly helpful.
 
@@ -616,7 +616,7 @@ While the algorithms themselves were implemented anew, multiple existing librari
 
 
 ## 11. Acknowledgements
-Designed and built by [Andrei-Leonard Nicusan](https://github.com/anicusan), maintained with [contributors](https://github.com/anicusan/AcceleratedKernels.jl/graphs/contributors).
+Designed and built by [Andrei-Leonard Nicusan](https://github.com/anicusan), maintained with [contributors](https://github.com/juliagpu/AcceleratedKernels.jl/graphs/contributors).
 
 Much of this work was possible because of the fantastic HPC resources at the University of Birmingham and the Birmingham Environment for Academic Research, which gave us free on-demand access to thousands of CPUs and GPUs that we experimented on, and the support teams we nagged. In particular, thank you to Kit Windows-Yule and Andrew Morris on the BlueBEAR and Baskerville T2 supercomputers' leadership, and Simon Branford, Simon Hartley, James Allsopp and James Carpenter for computing support.
 
