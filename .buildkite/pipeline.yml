@@ -1,0 +1,5 @@
+steps:
+  - trigger: ci-cuda
+  - trigger: ci-amdgpu
+  - trigger: ci-oneapi
+  - trigger: ci-metal
