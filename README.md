@@ -4,10 +4,164 @@
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliagpu.github.io/AcceleratedKernels.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliagpu.github.io/AcceleratedKernels.jl/dev/)
-[![CI-CPU](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml/badge.svg)](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+
+
+<table>
+
+<tr>
+<th>AK Backend</th>
+<th>Julia Version</th>
+<th>CI Status</th>
+</tr>
+
+<tr>
+<td>
+
+CPU Single- and Multi-Threaded
+
+</td>
+<td>
+
+Julia LTS, Stable, Pre-Release
+
+</td>
+<td>
+
+[![CI-CPU](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml/badge.svg)](https://github.com/juliagpu/AcceleratedKernels.jl/actions/workflows/CI-CPU.yml)
+
+</td>
+</tr>
+
+<tr>
+<td rowspan=2>
+
+CUDA
+
+</td>
+<td>
+
+Julia v1.10
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=CUDA%20-%20Julia%20v1.10)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+Julia v1.11
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=CUDA%20-%20Julia%20v1.11)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td rowspan=2>
+
+AMDGPU
+
+</td>
+<td>
+
+Julia v1.10
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=AMDGPU%20-%20Julia%20v1.10)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+Julia v1.11
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=AMDGPU%20-%20Julia%20v1.11)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td rowspan=2>
+
+oneAPI
+
+</td>
+<td>
+
+Julia v1.10
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=oneAPI%20-%20Julia%20v1.10)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+Julia v1.11
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=oneAPI%20-%20Julia%20v1.11)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td rowspan=2>
+
+Metal
+
+[Known Issue](https://github.com/JuliaGPU/AcceleratedKernels.jl/issues/10) 
+
+</td>
+<td>
+
+Julia v1.10
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=Metal%20-%20Julia%20v1.10)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+Julia v1.11
+
+</td>
+<td>
+
+[![Build status](https://badge.buildkite.com/5b8c747451b382a6b1ad0a1b566d565bc851fc59515792c62e.svg?step=Metal%20-%20Julia%20v1.11)](https://buildkite.com/julialang/acceleratedkernels-dot-jl)
+
+</td>
+</tr>
+
+</table>
 
 Parallel algorithm building blocks for the Julia ecosystem, targeting multithreaded CPUs, and GPUs via Intel oneAPI, AMD ROCm, Apple Metal and Nvidia CUDA (and any future backends added to the [JuliaGPU](https://juliagpu.org/) organisation).
 
