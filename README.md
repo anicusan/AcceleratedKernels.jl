@@ -8,6 +8,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
+Parallel algorithm building blocks for the Julia ecosystem, targeting multithreaded CPUs, and GPUs via Intel oneAPI, AMD ROCm, Apple Metal and Nvidia CUDA (and any future backends added to the [JuliaGPU](https://juliagpu.org/) organisation) from a unified KernelAbstractions.jl codebase.
+
 
 <table>
 
@@ -27,6 +29,10 @@ CPU Single- and Multi-Threaded
 
 Julia LTS, Stable, Pre-Release
 
+x86 and x64
+
+Windows, Ubuntu, MacOS
+
 </td>
 <td>
 
@@ -38,7 +44,7 @@ Julia LTS, Stable, Pre-Release
 <tr>
 <td rowspan=2>
 
-CUDA
+[CUDA](https://github.com/JuliaGPU/CUDA.jl)
 
 </td>
 <td>
@@ -69,7 +75,7 @@ Julia v1.11
 <tr>
 <td rowspan=2>
 
-AMDGPU
+[AMDGPU](https://github.com/JuliaGPU/AMDGPU.jl)
 
 </td>
 <td>
@@ -100,7 +106,7 @@ Julia v1.11
 <tr>
 <td rowspan=2>
 
-oneAPI
+[oneAPI](https://github.com/JuliaGPU/oneAPI.jl)
 
 </td>
 <td>
@@ -131,7 +137,7 @@ Julia v1.11
 <tr>
 <td rowspan=2>
 
-Metal
+[Metal](https://github.com/JuliaGPU/Metal.jl)
 
 [Known Issue](https://github.com/JuliaGPU/AcceleratedKernels.jl/issues/10) 
 
@@ -162,8 +168,6 @@ Julia v1.11
 </tr>
 
 </table>
-
-Parallel algorithm building blocks for the Julia ecosystem, targeting multithreaded CPUs, and GPUs via Intel oneAPI, AMD ROCm, Apple Metal and Nvidia CUDA (and any future backends added to the [JuliaGPU](https://juliagpu.org/) organisation).
 
 
 - [1. What's Different?](#1-whats-different)
@@ -197,11 +201,11 @@ Again, this is only possible because of the unique Julia compilation model, the 
 
 
 ## 2. Status
-The AcceleratedKernels.jl sorters were adopted as the official [AMDGPU algorithms](https://github.com/JuliaGPU/AMDGPU.jl/pull/688)! The API is starting to stabilise; it follows the Julia standard library fairly closely - additionally exposing all temporary arrays for memory reuse. For any new ideas / requests, please join the conversation on [Julia Discourse](https://discourse.julialang.org/t/ann-acceleratedkernels-jl-cross-architecture-parallel-algorithms-for-julias-gpu-backends/119698/16) or post [an issue](https://github.com/juliagpu/AcceleratedKernels.jl/issues).
+The AcceleratedKernels.jl sorters were adopted as the official [AMDGPU algorithms](https://github.com/JuliaGPU/AMDGPU.jl/pull/688)! The API is starting to stabilise; it follows the Julia standard library fairly closely - and additionally exposing all temporary arrays for memory reuse. For any new ideas / requests, please join the conversation on [Julia Discourse](https://discourse.julialang.org/t/ann-acceleratedkernels-jl-cross-architecture-parallel-algorithms-for-julias-gpu-backends/119698/16) or post [an issue](https://github.com/juliagpu/AcceleratedKernels.jl/issues).
 
-We have an extensive test suite; however, I only ran them locally on the oneAPI (laptop Intel UHD Graphics 620), CUDA (laptop with Nvidia Quadro RTX 4000 and data centre Nvidia A100-40), Metal (Mac M2 and M3), and AMD (data centre AMD MI210) backends. Some kinks might still exist for some platform / OS permutations before a CI is set up.
+We have an extensive randomised test suite that we run on the CPU (single- and multi-threaded) backend on Windows, Ubuntu and MacOS for Julia LTS, Stable, and Pre-Release, plus the CUDA, AMDGPU, oneAPI and Metal backends on the [JuliaGPU buildkite](https://github.com/JuliaGPU/buildkite).
 
-AcceleratedKernels.jl will also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
+AcceleratedKernels.jl is also be a fundamental building block of applications developed at [EvoPhase](https://evophase.co.uk/), so it will see continuous heavy use with industry backing. Long-term stability, performance improvements and support are priorities for us.
 
 
 ## 3. Benchmarks
@@ -713,8 +717,6 @@ Leave out to test the CPU backend:
 ```bash
 $> julia -e 'import Pkg; Pkg.test("AcceleratedKernels.jl")
 ```
-
-**TODO**: talk with the JuliaGPU team to add library to their [BuildKite agents](https://github.com/JuliaGPU/buildkite) CI.
 
 
 ## 8. Issues and Debugging
