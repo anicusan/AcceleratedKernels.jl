@@ -143,7 +143,6 @@ end
 
     len = length(v)
     block_size = @groupsize()[1]
-    temp = @localmem eltype(v) (2 * block_size,)
 
     # NOTE: for many index calculations in this library, computation using zero-indexing leads to
     # fewer operations (also code is transpiled to CUDA / ROCm / oneAPI / Metal code which do zero
@@ -154,13 +153,6 @@ end
     iblock = @index(Group, Linear) - 1 + 1              # Skipping first block
     ithread = @index(Local, Linear) - 1
     block_offset = iblock * block_size * 2              # Processing two elements per thread
-
-    # Copy two elements from the main array
-    ai = ithread
-    bi = ithread + block_size
-
-    temp[ai + 1] = block_offset + ai < len ? v[block_offset + ai + 1] : init
-    temp[bi + 1] = block_offset + bi < len ? v[block_offset + bi + 1] : init
 
     # Each block looks back to find running prefix sum
     running_prefix = init
@@ -180,14 +172,14 @@ end
     end
 
     # Now we have aggregate prefix of all previous blocks, add it to all our elements
-    temp[ai + 1] = op(running_prefix, temp[ai + 1])
-    temp[bi + 1] = op(running_prefix, temp[bi + 1])
-
+    ai = ithread
     if block_offset + ai < len
-        v[block_offset + ai + 1] = temp[ai + 1]
+        v[block_offset + ai + 1] = op(running_prefix, v[block_offset + ai + 1])
     end
+
+    bi = ithread + block_size
     if block_offset + bi < len
-        v[block_offset + bi + 1] = temp[bi + 1]
+        v[block_offset + bi + 1] = op(running_prefix, v[block_offset + bi + 1])
     end
 
     # Set flag for "aggregate of all prefixes up to this block finished"
@@ -214,6 +206,11 @@ function accumulate!(
     # Correctness checks
     @argcheck block_size > 0
     @argcheck ispow2(block_size)
+
+    # Nothing to accumulate
+    if length(v) == 0
+        return v
+    end
 
     # Each thread will process two elements
     elems_per_block = block_size * 2
@@ -246,7 +243,7 @@ function accumulate!(
                  ndrange=(num_blocks - 1) * block_size)
     end
 
-    nothing
+    return v
 end
 
 
@@ -275,8 +272,8 @@ function accumulate!(
         for i in eachindex(v)
             v[i], running = running, op(running, v[i])
         end
-
     end
+    return v
 end
 
 

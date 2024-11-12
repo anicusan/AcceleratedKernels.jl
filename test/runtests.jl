@@ -911,10 +911,10 @@ end
             mbase = minbox_base(vh, dims)
 
             @test eltype(mgpu) === eltype(mcpu) === eltype(mbase)
-            for (i, mgpu_red) in enumerate(Array(mgpu))
-                @test mgpu_red[1] ≈ mcpu[i][1] ≈ mbase[i][1]
-                @test mgpu_red[2] ≈ mcpu[i][2] ≈ mbase[i][2]
-            end
+            @test all([
+                (mgpu_red[1] ≈ mcpu[i][1] ≈ mbase[i][1]) && (mgpu_red[2] ≈ mcpu[i][2] ≈ mbase[i][2])
+                for (i, mgpu_red) in enumerate(Array(mgpu))
+            ])
         end
     end
 
