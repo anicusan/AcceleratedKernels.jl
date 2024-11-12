@@ -195,6 +195,7 @@ end
                         # there should be better memory fences to guarantee ordering without
                         # thread synchronization...
     if ithread == 0
+        dummy = v[1]
         flags[iblock + 1] = ACC_FLAG_A
     end
 end
@@ -214,6 +215,11 @@ function accumulate!(
     # Correctness checks
     @argcheck block_size > 0
     @argcheck ispow2(block_size)
+
+    # Nothing to accumulate
+    if length(v) == 0
+        return v
+    end
 
     # Each thread will process two elements
     elems_per_block = block_size * 2
@@ -246,7 +252,7 @@ function accumulate!(
                  ndrange=(num_blocks - 1) * block_size)
     end
 
-    nothing
+    return v
 end
 
 
@@ -275,8 +281,8 @@ function accumulate!(
         for i in eachindex(v)
             v[i], running = running, op(running, v[i])
         end
-
     end
+    return v
 end
 
 
