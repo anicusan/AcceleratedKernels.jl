@@ -194,8 +194,7 @@ end
     @synchronize()      # This is needed so that the flag is not set before copying into v, but
                         # there should be better memory fences to guarantee ordering without
                         # thread synchronization...
-    if ithread == 0
-        dummy = v[1]
+    if ithread == 0 && v[1] != typemax(eltype(v))  # This is a hack to enforce ordering of flags AFTER v is written
         flags[iblock + 1] = ACC_FLAG_A
     end
 end
