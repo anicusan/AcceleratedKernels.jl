@@ -176,7 +176,7 @@ Julia v1.11
 - [4. Functions Implemented](#4-functions-implemented)
 - [5. API Examples](#5-api-examples)
   - [5.1. Using Different Backends](#51-using-different-backends)
-  - [5.2. `foreachindex`](#52-foreachindex)
+  - [5.2. `foreachindex` / `foraxes`](#52-foreachindex--foraxes)
   - [5.3. `map`](#53-map)
   - [5.4. `sort` and friends](#54-sort-and-friends)
   - [5.5. `reduce`](#55-reduce)
@@ -234,7 +234,7 @@ Below is an overview of the currently-implemented algorithms, along with some co
 
 | Function Family                               | AcceleratedKernels.jl Functions                  | Other Common Names                                        |
 | --------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------- |
-| [General Looping](#52-foreachindex)           | `foreachindex`                                   | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
+| [General Looping](#52-foreachindex--foraxes)  | `foreachindex`, `foraxes`                        | `Kokkos::parallel_for` `RAJA::forall` `thrust::transform` |
 | [Mapping](#53-map)                            | `map` `map!`                                     | `thrust::transform`                                       |
 | [Sorting](#54-sort-and-friends)               | `sort` `sort!`                                   | `sort` `sort_team` `stable_sort`                          |
 |                                               | `merge_sort` `merge_sort!`                       |                                                           |
@@ -291,8 +291,8 @@ Note the `reduce` and `mapreduce` CPU implementations forward arguments to [OhMy
 There is ongoing work on multithreaded CPU `sort` and `accumulate` implementations - at the moment, they fall back to single-threaded algorithms; the rest of the library is fully parallelised for both CPUs and GPUs.
 
 
-### 5.2. `foreachindex`
-General workhorse for converting normal Julia `for` loops into GPU code, for example:
+### 5.2. `foreachindex` / `foraxes`
+General workhorses for converting normal Julia `for` loops into GPU code, for example:
 
 <table>
 <tr>
@@ -389,6 +389,42 @@ Similarly, for performance on the CPU the overhead of spawning threads should be
 @time AK.foreachindex(f, itr_cpu, max_tasks=16, min_elems=1000)
 ```
 
+---
+
+To iterate over the indices along a dimension of an array, similar to `axes(itr, dims)`, you can use `foraxes`. Function signature:
+
+```julia
+foraxes(
+    f, itr, dims::Union{Nothing, <:Integer}=nothing, backend::Backend=get_backend(itr);
+
+    # CPU settings
+    scheduler=:threads,
+    max_tasks=Threads.nthreads(),
+    min_elems=1,
+
+    # GPU settings
+    block_size=256,
+)
+```
+
+Example:
+```julia
+using CUDA
+import AcceleratedKernels as AK
+
+function outer_set!(y, x)
+    AK.foraxes(x, 2) do i
+        for j in axes(x, 1)
+            @inbounds y[j, i] = 2 * x[j, i] + 1
+        end
+    end
+end
+
+x = CuArray(reshape(1:3000, 3, 1000))
+y = similar(x)
+outer_set!(y, x)
+```
+
 
 ### 5.3. `map`
 Parallel mapping of a function over each element of an iterable via `foreachindex`:
@@ -433,11 +469,11 @@ Function signature:
 ```julia
 sort!(v::AbstractGPUVector;
       lt=isless, by=identity, rev::Bool=false, order::Base.Order.Ordering=Base.Order.Forward,
-      block_size::Int=128, temp::Union{Nothing, AbstractGPUVector}=nothing)
+      block_size::Int=256, temp::Union{Nothing, AbstractGPUVector}=nothing)
 
 sortperm!(ix::AbstractGPUVector, v::AbstractGPUVector;
           lt=isless, by=identity, rev::Bool=false, order::Base.Order.Ordering=Base.Order.Forward,
-          block_size::Int=128, temp::Union{Nothing, AbstractGPUVector}=nothing)
+          block_size::Int=256, temp::Union{Nothing, AbstractGPUVector}=nothing)
 ```
 
 Specific implementations that the interfaces above forward to:
@@ -449,23 +485,23 @@ Function signature:
 ```julia
 merge_sort!(v::AbstractGPUVector;
             lt=(<), by=identity, rev::Bool=false, order::Ordering=Forward,
-            block_size::Int=128, temp::Union{Nothing, AbstractGPUVector}=nothing)
+            block_size::Int=256, temp::Union{Nothing, AbstractGPUVector}=nothing)
 
 merge_sort_by_key!(keys::AbstractGPUVector, values::AbstractGPUVector;
                    lt=(<), by=identity, rev::Bool=false, order::Ordering=Forward,
-                   block_size::Int=128,
+                   block_size::Int=256,
                    temp_keys::Union{Nothing, AbstractGPUVector}=nothing,
                    temp_values::Union{Nothing, AbstractGPUVector}=nothing)
 
 merge_sortperm!(ix::AbstractGPUVector, v::AbstractGPUVector;
                 lt=(<), by=identity, rev::Bool=false, order::Ordering=Forward,
-                inplace::Bool=false, block_size::Int=128,
+                inplace::Bool=false, block_size::Int=256,
                 temp_ix::Union{Nothing, AbstractGPUVector}=nothing,
                 temp_v::Union{Nothing, AbstractGPUVector}=nothing)
 
 merge_sortperm_lowmem!(ix::AbstractGPUVector, v::AbstractGPUVector;
                        lt=(<), by=identity, rev::Bool=false, order::Ordering=Forward,
-                       block_size::Int=128,
+                       block_size::Int=256,
                        temp::Union{Nothing, AbstractGPUVector}=nothing)
 ```
 
@@ -575,11 +611,11 @@ Compute accumulated running totals along a sequence by applying a binary operato
 Function signature:
 ```julia
 accumulate!(op, v::AbstractGPUVector; init, inclusive::Bool=true,
-            block_size::Int=128,
+            block_size::Int=256,
             temp::Union{Nothing, AbstractGPUVector}=nothing,
             temp_flags::Union{Nothing, AbstractGPUVector}=nothing)
 accumulate(op, v::AbstractGPUVector; init, inclusive::Bool=true,
-           block_size::Int=128,
+           block_size::Int=256,
            temp::Union{Nothing, AbstractGPUVector}=nothing,
            temp_flags::Union{Nothing, AbstractGPUVector}=nothing)
 ```

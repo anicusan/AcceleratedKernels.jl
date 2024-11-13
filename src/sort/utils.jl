@@ -7,8 +7,8 @@
 @inbounds @inline function _lower_bound_s0(arr, value, left=0, right=length(arr), comp=(<))
     right <= left && return left
     comp(arr[right], value) && return right
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
+    while right > left + 0x1
+        mid = left + ((right - left) >> 0x1)
         if comp(arr[mid], value)
             left = mid
         else
@@ -21,10 +21,10 @@ end
 
 @inbounds @inline function _upper_bound_s0(arr, value, left=0, right=length(arr), comp=(<))
     right <= left && return left
-    comp(value, arr[left + 1]) && return left
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
-        if comp(value, arr[mid + 1])
+    comp(value, arr[left + 0x1]) && return left
+    while right > left + 0x1
+        mid = left + ((right - left) >> 0x1)
+        if comp(value, arr[mid + 0x1])
             right = mid
         else
             left = mid
@@ -37,8 +37,8 @@ end
 @inbounds @inline function _lower_bound_si0(ix, vec, value, left=0, right=length(ix), comp=(<))
     right <= left && return left
     comp(vec[ix[right]], value) && return right
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
+    while right > left + 0x1
+        mid = left + ((right - left) >> 0x1)
         if comp(vec[ix[mid]], value)
             left = mid
         else
@@ -51,10 +51,10 @@ end
 
 @inbounds @inline function _upper_bound_si0(ix, vec, value, left=0, right=length(ix), comp=(<))
     right <= left && return left
-    comp(value, vec[ix[left + 1]]) && return left
-    while right > left + 1
-        mid = left + ((right - left) >> 1)
-        if comp(value, vec[ix[mid + 1]])
+    comp(value, vec[ix[left + 0x1]]) && return left
+    while right > left + 0x1
+        mid = left + ((right - left) >> 0x1)
+        if comp(value, vec[ix[mid + 0x1]])
             right = mid
         else
             left = mid

@@ -8,7 +8,7 @@ function merge_sortperm!(
     order::Base.Order.Ordering=Base.Order.Forward,
 
     inplace::Bool=false,
-    block_size::Int=128,
+    block_size::Int=256,
     temp_ix::Union{Nothing, AbstractGPUVector}=nothing,
     temp_v::Union{Nothing, AbstractGPUVector}=nothing,
 )
@@ -51,7 +51,7 @@ function merge_sortperm(
     order::Base.Order.Ordering=Base.Order.Forward,
 
     inplace::Bool=false,
-    block_size::Int=128,
+    block_size::Int=256,
     temp_ix::Union{Nothing, AbstractGPUVector}=nothing,
     temp_v::Union{Nothing, AbstractGPUVector}=nothing,
 )
@@ -73,7 +73,7 @@ function merge_sortperm_lowmem!(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     # Simple sanity checks
@@ -99,7 +99,7 @@ function merge_sortperm_lowmem!(
     _merge_sort_block!(backend, block_size)(ix, comp, ndrange=(block_size * blocks,))
 
     # Global level
-    half_size_group = block_size * 2
+    half_size_group = Int32(block_size * 2)
     size_group = half_size_group * 2
     len = length(ix)
     if len > half_size_group
@@ -137,7 +137,7 @@ function merge_sortperm_lowmem(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     ix = similar(v, Int)

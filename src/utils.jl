@@ -3,6 +3,53 @@ function ispow2(x)
 end
 
 
+"""
+    struct TypeWrap{T} end
+    TypeWrap(T) = TypeWrap{T}()
+    Base.:*(x::Number, ::TypeWrap{T}) where T = T(x)
+
+Allow type conversion via multiplication, like `5i32` for `5 * i32` where `i32` is a `TypeWrap`.
+
+# Examples
+```julia
+import AcceleratedKernels as AK
+u32 = AK.TypeWrap{UInt32}
+println(typeof(5u32))
+
+# output
+UInt32
+```
+
+This is used e.g. to set integer literals inside kernels as u16 to ensure no indices are promoted
+beyond the index base type.
+
+For example, Metal uses `UInt32` indices, but if it is mixed with a Julia integer literal (`Int64`
+by default) like in `src[ithread + 1]`, we incur a type cast to `Int64`. Instead, we can use
+`src[ithread + 1u16]` or `src[ithread + 0x1]` to ensure the index is `UInt32` and avoid the cast;
+as the integer literal `1u16` has a shorter type than `ithread`, it is automatically promoted (at
+compile time) to the `ithread` type, whether `ithread` is signed or unsigned as per the backend.
+
+```julia
+# Defaults defined
+1u8, 2u16, 3u32, 4u64
+5i8, 6i16, 7i32, 8i64
+```
+"""
+struct TypeWrap{T} end
+TypeWrap(T) = TypeWrap{T}()
+Base.:*(x::Number, ::TypeWrap{T}) where T = T(x)
+
+const u8 = TypeWrap(UInt8)
+const u16 = TypeWrap(UInt16)
+const u32 = TypeWrap(UInt32)
+const u64 = TypeWrap(UInt64)
+
+const i8 = TypeWrap(Int8)
+const i16 = TypeWrap(Int16)
+const i32 = TypeWrap(Int32)
+const i64 = TypeWrap(Int64)
+
+
 module DocHelpers
     export readme_section
 

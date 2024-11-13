@@ -20,6 +20,11 @@ using Unrolled
 using DocStringExtensions
 
 
+# Exposed functions from upstream packages
+const synchronize = KernelAbstractions.synchronize
+const get_backend = KernelAbstractions.get_backend
+
+
 # Include code from other files
 include("utils.jl")
 include("task_partitioner.jl")

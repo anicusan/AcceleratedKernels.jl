@@ -1,0 +1,6 @@
+[deps]
+AcceleratedKernels = "6a4ca0a5-0e36-4168-a932-d9be78d558f1"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
+pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"

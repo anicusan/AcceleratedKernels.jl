@@ -20,12 +20,12 @@ function baseacc(v)
 end
 
 
-v = MtlArray(rand(1:100, 1_000_000))
+v = MtlArray(rand(1:100, 10_000_000))
 
 # Correctness checks
 va = akacc(v) |> Array
 vb = baseacc(v) |> Array
-# @assert va == vb
+@assert va == vb
 
 # Benchmarks
 println("Base vs AK")
