@@ -11,21 +11,34 @@ import Pkg
 if "--CUDA" in ARGS
     Pkg.add("CUDA")
     using CUDA
+    display(CUDA.versioninfo())
     const backend = CUDABackend()
 elseif "--oneAPI" in ARGS
     Pkg.add("oneAPI")
     using oneAPI
+    display(oneAPI.versioninfo())
     const backend = oneAPIBackend()
 elseif "--AMDGPU" in ARGS
     Pkg.add("AMDGPU")
     using AMDGPU
+    display(AMDGPU.versioninfo())
     const backend = ROCBackend()
 elseif "--Metal" in ARGS
     Pkg.add("Metal")
     using Metal
+    display(Metal.versioninfo())
     const backend = MetalBackend()
-else
+elseif "--OpenCL" in ARGS
+    Pkg.add(name="OpenCL", rev="master")
+    Pkg.add("pocl_jll")
+    using pocl_jll
+    using OpenCL
+    display(OpenCL.versioninfo())
+    const backend = OpenCLBackend()
+elseif !@isdefined(backend)
     # Otherwise do CPU tests
+    using InteractiveUtils
+    display(InteractiveUtils.versioninfo())
     const backend = CPU()
 end
 
@@ -140,6 +153,63 @@ end
         xh = Array(x)
         @test all(xh .== 1:length(xh))
     end
+end
+
+
+@testset "foraxes" begin
+    Random.seed!(0)
+
+    f1(x; kwargs...) = AK.foraxes(x, 1; kwargs...) do i
+        for j in axes(x, 2)
+            x[i, j] = i + j
+        end
+    end
+
+    x = array_from_host(zeros(Int, 10, 1000))
+    f1(x)
+    xh = Array(x)
+    @test all(xh .== (1:10) .+ (1:1000)')
+
+    x = array_from_host(zeros(UInt32, 10, 1000))
+    f1(x, scheduler=:threads, max_tasks=2, min_elems=100, block_size=64)
+    xh = Array(x)
+    @test all(xh .== (1:10) .+ (1:1000)')
+
+    x = array_from_host(zeros(Float32, 10, 1000))
+    f1(x, scheduler=:polyester, max_tasks=4, min_elems=500, block_size=128)
+    xh = Array(x)
+    @test all(xh .≈ (1:10) .+ (1:1000)')
+
+    f2(x; kwargs...) = AK.foraxes(x, 2; kwargs...) do j
+        for i in axes(x, 1)
+            x[i, j] = i + j
+        end
+    end
+
+    x = array_from_host(zeros(Int, 10, 1000))
+    f2(x)
+    xh = Array(x)
+    @test all(xh .== (1:10) .+ (1:1000)')
+
+    x = array_from_host(zeros(UInt32, 10, 1000))
+    f2(x, scheduler=:threads, max_tasks=2, min_elems=100, block_size=64)
+    xh = Array(x)
+    @test all(xh .== (1:10) .+ (1:1000)')
+
+    x = array_from_host(zeros(Float32, 10, 1000))
+    f2(x, scheduler=:polyester, max_tasks=4, min_elems=500, block_size=128)
+    xh = Array(x)
+    @test all(xh .≈ (1:10) .+ (1:1000)')
+
+    # dims are nothing, behaving like foreachindex
+    f3(x; kwargs...) = AK.foraxes(x, nothing; kwargs...) do i
+        x[i] = i
+    end
+
+    x = array_from_host(zeros(Int, 10, 1000))
+    f3(x)
+    xh = Array(x)
+    @test all(xh[:] .== 1:length(x))
 end
 
 

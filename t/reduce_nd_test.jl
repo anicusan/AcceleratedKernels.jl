@@ -1,5 +1,30 @@
 
-using Metal
+# using Random
+# using BenchmarkTools
+# using Profile
+# using PProf
+
+# using KernelAbstractions
+# using Metal
+
+# import AcceleratedKernels as AK
+
+
+# Random.seed!(0)
+
+
+
+
+# s = MtlArray(rand(Int32(1):Int32(100), 3, 1000))
+# d = AK.reduce(+, s; init=zero(eltype(s)), dims=3)
+# KernelAbstractions.synchronize(get_backend(s))
+# d
+
+
+using pocl_jll
+using OpenCL
+
+using KernelAbstractions
 import AcceleratedKernels as AK
 
 using BenchmarkTools
@@ -9,33 +34,35 @@ Random.seed!(0)
 
 function sum_base(s; dims)
     d = reduce(+, s; init=zero(eltype(s)), dims=dims)
-    AK.synchronize(AK.get_backend(s))
+    KernelAbstractions.synchronize(get_backend(s))
     d
 end
 
 
 function sum_ak(s; dims)
-    d = AK.reduce(+, s; init=zero(eltype(s)), dims=dims)
-    AK.synchronize(AK.get_backend(s))
+    d = AK.reduce(+, s; init=zero(eltype(s)), dims=dims, block_size=16)
+    KernelAbstractions.synchronize(get_backend(s))
     d
 end
 
 
 # Make array with highly unequal per-axis sizes
-s = MtlArray(rand(Int32(1):Int32(100), 10, 1_000_000))
+sh = rand(Int32(-100):Int32(100), 10, 100_000)
+s = CLArray(sh)
+
 
 # Correctness
-@assert sum_base(s, dims=1) == sum_ak(s, dims=1)
-@assert sum_base(s, dims=2) == sum_ak(s, dims=2)
+@assert sum_base(sh, dims=1) == Array(sum_ak(s, dims=1))
+@assert sum_base(sh, dims=2) == Array(sum_ak(s, dims=2))
 
 # Benchmarks
 println("\nReduction over small axis - AK vs Base")
 display(@benchmark sum_ak($s, dims=1))
-display(@benchmark sum_base($s, dims=1))
+display(@benchmark sum_base($sh, dims=1))
 
 println("\nReduction over long axis - AK vs Base")
 display(@benchmark sum_ak($s, dims=2))
-display(@benchmark sum_base($s, dims=2))
+display(@benchmark sum_base($sh, dims=2))
 
 
 

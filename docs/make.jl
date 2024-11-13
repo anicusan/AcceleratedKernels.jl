@@ -31,6 +31,7 @@ makedocs(;
             "Predicates" => "api/predicates.md",
             "Custom Structs" => "api/custom_structs.md",
             "Task Partitioning" => "api/task_partition.md",
+            "Utilities" => "api/utilities.md",
         ],
         "Testing" => "testing.md",
         "Debugging Kernels" => "debugging.md",

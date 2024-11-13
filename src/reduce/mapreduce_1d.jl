@@ -11,22 +11,24 @@
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
-    i = ithread + iblock * (N * 2)
+    i = ithread + iblock * (N * 0x2)
     if i >= len
-        sdata[ithread + 1] = init
+        sdata[ithread + 0x1] = init
     elseif i + N >= len
-        sdata[ithread + 1] = f(src[i + 1])
+        sdata[ithread + 0x1] = f(src[i + 0x1])
     else
-        sdata[ithread + 1] = op(f(src[i + 1]), f(src[i + N + 1]))
+        sdata[ithread + 0x1] = op(f(src[i + 0x1]), f(src[i + N + 0x1]))
     end
 
     @synchronize()
 
-    if N >= 512
-        ithread < 256 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 256 + 1]))
+    if N >= 512u16
+        if ithread < 256u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 256u16 + 0x1])
+        end
         @synchronize()
     end
     if N >= 256

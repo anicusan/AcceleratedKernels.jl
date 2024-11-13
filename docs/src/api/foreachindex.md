@@ -2,4 +2,5 @@
 
 ```@docs
 AcceleratedKernels.foreachindex
+AcceleratedKernels.foraxes
 ```

@@ -17,7 +17,7 @@ function sort!(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     merge_sort!(
@@ -36,7 +36,7 @@ function sort!(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
 )
     # Fallback to Base before we have a CPU parallel sort
@@ -52,7 +52,7 @@ function sort(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     merge_sort(
@@ -71,7 +71,7 @@ function sort(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
 )
     # Fallback to Base before we have a CPU parallel sort
@@ -88,7 +88,7 @@ function sortperm!(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     merge_sortperm_lowmem!(
@@ -108,7 +108,7 @@ function sortperm!(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
 )
     # Fallback to Base before we have a CPU parallel sortperm
@@ -124,7 +124,7 @@ function sortperm(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
 )
     merge_sortperm_lowmem(
@@ -143,7 +143,7 @@ function sortperm(
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
 )
     # Fallback to Base before we have a CPU parallel sortperm

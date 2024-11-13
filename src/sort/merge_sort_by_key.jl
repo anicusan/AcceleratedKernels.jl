@@ -1,8 +1,8 @@
 @kernel inbounds=true function _merge_sort_by_key_block!(keys, values, comp)
 
     N = @groupsize()[1]
-    s_keys = @localmem eltype(keys) (N * 2,)
-    s_values = @localmem eltype(values) (N * 2,)
+    s_keys = @localmem eltype(keys) (N * 0x2,)
+    s_values = @localmem eltype(values) (N * 0x2,)
 
     I = typeof(N)
     len = length(keys)
@@ -13,25 +13,25 @@
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
-    i = ithread + iblock * N * 2
+    i = ithread + iblock * N * 0x2
     if i < len
-        s_keys[ithread + 1] = keys[i + 1]
-        s_values[ithread + 1] = values[i + 1]
+        s_keys[ithread + 0x1] = keys[i + 0x1]
+        s_values[ithread + 0x1] = values[i + 0x1]
     end
 
-    i = ithread + N + iblock * N * 2
+    i = ithread + N + iblock * N * 0x2
     if i < len
-        s_keys[ithread + N + 1] = keys[i + 1]
-        s_values[ithread + N + 1] = values[i + 1]
+        s_keys[ithread + N + 0x1] = keys[i + 0x1]
+        s_values[ithread + N + 0x1] = values[i + 0x1]
     end
 
     @synchronize()
 
-    half_size_group = 1
-    size_group = 2
+    half_size_group = typeof(ithread)(1)
+    size_group = typeof(ithread)(2)
 
     while half_size_group <= N
         gid = ithread ÷ half_size_group
@@ -43,24 +43,24 @@
         pos1 = typemax(I)
         pos2 = typemax(I)
 
-        i = gid * size_group + half_size_group + iblock * N * 2
+        i = gid * size_group + half_size_group + iblock * N * 0x2
         if i < len
             tid = gid * size_group + ithread % half_size_group
-            k1 = s_keys[tid + 1]
-            v1 = s_values[tid + 1]
+            k1 = s_keys[tid + 0x1]
+            v1 = s_values[tid + 0x1]
 
-            i = (gid + 1) * size_group + iblock * N * 2
-            n = i < len ? half_size_group : len - iblock * N * 2 - gid * size_group - half_size_group
+            i = (gid + 0x1) * size_group + iblock * N * 0x2
+            n = i < len ? half_size_group : len - iblock * N * 0x2 - gid * size_group - half_size_group
             lo = gid * size_group + half_size_group
             hi = lo + n
             pos1 = ithread % half_size_group + _lower_bound_s0(s_keys, k1, lo, hi, comp) - lo
         end
 
         tid = gid * size_group + half_size_group + ithread % half_size_group
-        i = tid + iblock * N * 2
+        i = tid + iblock * N * 0x2
         if i < len
-            k2 = s_keys[tid + 1]
-            v2 = s_values[tid + 1]
+            k2 = s_keys[tid + 0x1]
+            v2 = s_values[tid + 0x1]
             lo = gid * size_group
             hi = lo + half_size_group
             pos2 = ithread % half_size_group + _upper_bound_s0(s_keys, k2, lo, hi, comp) - lo
@@ -69,30 +69,30 @@
         @synchronize()
 
         if pos1 != typemax(I)
-            s_keys[gid * size_group + pos1 + 1] = k1
-            s_values[gid * size_group + pos1 + 1] = v1
+            s_keys[gid * size_group + pos1 + 0x1] = k1
+            s_values[gid * size_group + pos1 + 0x1] = v1
         end
         if pos2 != typemax(I)
-            s_keys[gid * size_group + pos2 + 1] = k2
-            s_values[gid * size_group + pos2 + 1] = v2
+            s_keys[gid * size_group + pos2 + 0x1] = k2
+            s_values[gid * size_group + pos2 + 0x1] = v2
         end
 
         @synchronize()
 
-        half_size_group = half_size_group << 1
-        size_group = size_group << 1
+        half_size_group = half_size_group << 0x1
+        size_group = size_group << 0x1
     end
 
-    i = ithread + iblock * N * 2
+    i = ithread + iblock * N * 0x2
     if i < len
-        keys[i + 1] = s_keys[ithread + 1]
-        values[i + 1] = s_values[ithread + 1]
+        keys[i + 0x1] = s_keys[ithread + 0x1]
+        values[i + 0x1] = s_values[ithread + 0x1]
     end
 
-    i = ithread + N + iblock * N * 2
+    i = ithread + N + iblock * N * 0x2
     if i < len
-        keys[i + 1] = s_keys[ithread + N + 1]
-        values[i + 1] = s_values[ithread + N + 1]
+        keys[i + 0x1] = s_keys[ithread + N + 0x1]
+        values[i + 0x1] = s_values[ithread + N + 0x1]
     end
 end
 
@@ -110,11 +110,11 @@ end
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
     idx = ithread + iblock * N
-    size_group = half_size_group * 2
+    size_group = half_size_group * 0x2
     gid = idx ÷ half_size_group
 
     # Left half
@@ -125,17 +125,17 @@ end
         # Incomplete left half, nothing to swap on the right, simply copy elements to be sorted
         # in next iteration
         if pos_in < len
-            keys_out[pos_in + 1] = keys_in[pos_in + 1]
-            values_out[pos_in + 1] = values_in[pos_in + 1]
+            keys_out[pos_in + 0x1] = keys_in[pos_in + 0x1]
+            values_out[pos_in + 0x1] = values_in[pos_in + 0x1]
         end
     else
 
-        hi = (gid + 1) * size_group
+        hi = (gid + 0x1) * size_group
         hi > len && (hi = len)
 
-        pos_out = pos_in + _lower_bound_s0(keys_in, keys_in[pos_in + 1], lo, hi, comp) - lo
-        keys_out[pos_out + 1] = keys_in[pos_in + 1]
-        values_out[pos_out + 1] = values_in[pos_in + 1]
+        pos_out = pos_in + _lower_bound_s0(keys_in, keys_in[pos_in + 0x1], lo, hi, comp) - lo
+        keys_out[pos_out + 0x1] = keys_in[pos_in + 0x1]
+        values_out[pos_out + 0x1] = values_in[pos_in + 0x1]
 
         # Right half
         pos_in = gid * size_group + half_size_group + idx % half_size_group
@@ -143,9 +143,9 @@ end
         if pos_in < len
             lo = gid * size_group
             hi = lo + half_size_group
-            pos_out = pos_in - half_size_group + _upper_bound_s0(keys_in, keys_in[pos_in + 1], lo, hi, comp) - lo
-            keys_out[pos_out + 1] = keys_in[pos_in + 1]
-            values_out[pos_out + 1] = values_in[pos_in + 1]
+            pos_out = pos_in - half_size_group + _upper_bound_s0(keys_in, keys_in[pos_in + 0x1], lo, hi, comp) - lo
+            keys_out[pos_out + 0x1] = keys_in[pos_in + 0x1]
+            values_out[pos_out + 0x1] = values_in[pos_in + 0x1]
         end
     end
 end
@@ -155,12 +155,12 @@ function merge_sort_by_key!(
     keys::AbstractGPUVector,
     values::AbstractGPUVector;
 
-    lt=(<),
+    lt=isless,
     by=identity,
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp_keys::Union{Nothing, AbstractGPUVector}=nothing,
     temp_values::Union{Nothing, AbstractGPUVector}=nothing,
 )
@@ -186,7 +186,7 @@ function merge_sort_by_key!(
     _merge_sort_by_key_block!(backend, block_size)(keys, values, comp, ndrange=(block_size * blocks,))
 
     # Global level
-    half_size_group = block_size * 2
+    half_size_group = Int32(block_size * 2)
     size_group = half_size_group * 2
     len = length(keys)
     if len > half_size_group
@@ -225,12 +225,12 @@ function merge_sort_by_key(
     keys::AbstractGPUVector,
     values::AbstractGPUVector;
 
-    lt=(<),
+    lt=isless,
     by=identity,
     rev::Bool=false,
     order::Base.Order.Ordering=Base.Order.Forward,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp_keys::Union{Nothing, AbstractGPUVector}=nothing,
     temp_values::Union{Nothing, AbstractGPUVector}=nothing,
 )
