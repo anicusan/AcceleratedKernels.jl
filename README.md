@@ -14,7 +14,7 @@ Parallel algorithm building blocks for the Julia ecosystem, targeting multithrea
 <table>
 
 <tr>
-<th>AK Backend</th>
+<th>AcceleratedKernels Backend</th>
 <th>Julia Version</th>
 <th>CI Status</th>
 </tr>

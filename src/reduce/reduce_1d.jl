@@ -11,56 +11,73 @@
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
-    i = ithread + iblock * (N * 2)
+    i = ithread + iblock * (N * 0x2)
     if i >= len
-        sdata[ithread + 1] = init
+        sdata[ithread + 0x1] = init
     elseif i + N >= len
-        sdata[ithread + 1] = src[i + 1]
+        sdata[ithread + 0x1] = src[i + 0x1]
     else
-        sdata[ithread + 1] = op(src[i + 1], src[i + N + 1])
+        sdata[ithread + 0x1] = op(src[i + 0x1], src[i + N + 0x1])
     end
 
     @synchronize()
 
-    if N >= 512
-        ithread < 256 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 256 + 1]))
+    if N >= 512u16
+        if ithread < 256u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 256u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 256
-        ithread < 128 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 128 + 1]))
+    if N >= 256u16
+        if ithread < 128u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 128u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 128
-        ithread < 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 64 + 1]))
+    if N >= 128u16
+        if ithread < 64u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 64u16 + 0x1])
+        end
         @synchronize()
     end
 
-    # CUDA has a warp size of 32, AMD a "wavefront" of 64, and Intel Graphics messes it up
-    if N >= 64
-        ithread < 32 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
+    if N >= 64u16
+        if ithread < 32u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 32u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 32
-        ithread < 16 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 16 + 1]))
+    if N >= 32u16
+        if ithread < 16u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 16u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 16
-        ithread < 8 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 8 + 1]))
+    if N >= 16u16
+        if ithread < 8u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 8u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 8
-        ithread < 4 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 4 + 1]))
+    if N >= 8u16
+        if ithread < 4u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 4u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 4
-        ithread < 2 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 2 + 1]))
+    if N >= 4u16
+        if ithread < 2u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 2u16 + 0x1])
+        end
         @synchronize()
     end
-    if N >= 2
-        ithread < 1 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 1 + 1]))
+    if N >= 2u16
+        if ithread < 1u16
+            sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x1 + 0x1])
+        end
         @synchronize()
     end
 
@@ -77,8 +94,8 @@
     #     N >= 2 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 1 + 1]))
     # end
 
-    if ithread == 0
-        dst[iblock + 1] = sdata[1]
+    if ithread == 0x0
+        dst[iblock + 0x1] = sdata[0x1]
     end
 end
 

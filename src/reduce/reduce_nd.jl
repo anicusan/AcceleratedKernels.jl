@@ -46,7 +46,7 @@
         # Compute the base index in src (excluding the reduced axis)
         input_base_idx = typeof(ithread)(0)
         tmp = tid
-        KernelAbstractions.Extras.@unroll for i in ndims:-1:1
+        KernelAbstractions.Extras.@unroll for i in ndims:-1i16:1i16
             if i != dims
                 input_base_idx += (tmp ÷ dst_strides[i]) * src_strides[i]
             end
@@ -112,7 +112,7 @@ end
         # Compute the base index in src (excluding the reduced axis)
         input_base_idx = typeof(ithread)(0)
         tmp = iblock
-        KernelAbstractions.Extras.@unroll for i in ndims:-1:1
+        KernelAbstractions.Extras.@unroll for i in ndims:-1i16:1i16
             if i != dims
                 input_base_idx += (tmp ÷ dst_strides[i]) * src_strides[i]
             end
@@ -137,39 +137,57 @@ end
         # For example, Metal uses UInt32 indices, but if it is mixed with a Julia integer literal
         # (Int64 by default), we incur a type cast
         if N >= 512u16
-            ithread < 256u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 256u16 + 0x1]))
+            if ithread < 256u16
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 256u16 + 0x1])
+            end
             @synchronize()
         end
         if N >= 256u16
-            ithread < 128u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 128u16 + 0x1]))
+            if ithread < 128u16
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 128u16 + 0x1])
+            end
             @synchronize()
         end
         if N >= 128u16
-            ithread < 64u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 64u16 + 0x1]))
+            if ithread < 64u16
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 64u16 + 0x1])
+            end
             @synchronize()
         end
         if N >= 64u16
-            ithread < 32u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 32u16 + 0x1]))
+            if ithread < 32u16
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 32u16 + 0x1])
+            end
             @synchronize()
         end
         if N >= 32u16
-            ithread < 16u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 16u16 + 0x1]))
+            if ithread < 16u16
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 16u16 + 0x1])
+            end
             @synchronize()
         end
         if N >= 16u16
-            ithread < 0x8 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x8 + 0x1]))
+            if ithread < 0x8
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x8 + 0x1])
+            end
             @synchronize()
         end
         if N >= 0x8
-            ithread < 0x4 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x4 + 0x1]))
+            if ithread < 0x4
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x4 + 0x1])
+            end
             @synchronize()
         end
         if N >= 0x4
-            ithread < 0x2 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x2 + 0x1]))
+            if ithread < 0x2
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x2 + 0x1])
+            end
             @synchronize()
         end
         if N >= 0x2
-            ithread < 0x1 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x1 + 0x1]))
+            if ithread < 0x1
+                sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 0x1 + 0x1])
+            end
             @synchronize()
         end
     

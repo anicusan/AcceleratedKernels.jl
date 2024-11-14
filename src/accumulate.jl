@@ -1,8 +1,8 @@
-const ACC_NUM_BANKS = 32
-const ACC_LOG_NUM_BANKS = 5
+const ACC_NUM_BANKS::UInt8 = 32
+const ACC_LOG_NUM_BANKS::UInt8 = 5
 
-const ACC_FLAG_A::Int8 = 0          # Aggregate of all previous prefixes finished
-const ACC_FLAG_P::Int8 = 1          # Only current block's prefix available
+const ACC_FLAG_A::UInt8 = 0             # Aggregate of all previous prefixes finished
+const ACC_FLAG_P::UInt8 = 1             # Only current block's prefix available
 
 
 @inline function conflict_free_offset(n)
@@ -20,7 +20,7 @@ end
     # NOTE: block_size MUST be a power of 2
     len = length(v)
     block_size = @groupsize()[1]
-    temp = @localmem eltype(v) (2 * block_size + conflict_free_offset(2 * block_size),)
+    temp = @localmem eltype(v) (0x2 * block_size + conflict_free_offset(0x2 * block_size),)
 
     # NOTE: for many index calculations in this library, computation using zero-indexing leads to
     # fewer operations (also code is transpiled to CUDA / ROCm / oneAPI / Metal code which do zero
@@ -28,11 +28,11 @@ end
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
     num_blocks = @ndrange()[1] ÷ block_size
-    block_offset = iblock * block_size * 2              # Processing two elements per thread
+    block_offset = iblock * block_size * 0x2            # Processing two elements per thread
 
     # Copy two elements from the main array; offset indices to avoid bank conflicts
     ai = ithread
@@ -42,82 +42,82 @@ end
     bank_offset_b = conflict_free_offset(bi)
 
     if block_offset + ai < len
-        temp[ai + bank_offset_a + 1] = v[block_offset + ai + 1]
+        temp[ai + bank_offset_a + 0x1] = v[block_offset + ai + 0x1]
     else
-        temp[ai + bank_offset_a + 1] = init
+        temp[ai + bank_offset_a + 0x1] = init
     end
 
     if block_offset + bi < len
-        temp[bi + bank_offset_b + 1] = v[block_offset + bi + 1]
+        temp[bi + bank_offset_b + 0x1] = v[block_offset + bi + 0x1]
     else
-        temp[bi + bank_offset_b + 1] = init
+        temp[bi + bank_offset_b + 0x1] = init
     end
 
     # Build block reduction down
-    offset = 1
-    next_pow2 = block_size * 2
-    d = next_pow2 >> 1
-    while d > 0             # TODO: unroll this like in reduce.jl ?
+    offset = typeof(ithread)(1)
+    next_pow2 = block_size * 0x2
+    d = next_pow2 >> 0x1
+    while d > 0x0             # TODO: unroll this like in reduce.jl ?
         @synchronize()
 
         if ithread < d
-            _ai = offset * (2 * ithread + 1) - 1
-            _bi = offset * (2 * ithread + 2) - 1
+            _ai = offset * (0x2 * ithread + 0x1) - 0x1
+            _bi = offset * (0x2 * ithread + 0x2) - 0x1
             _ai += conflict_free_offset(_ai)
             _bi += conflict_free_offset(_bi)
 
-            temp[_bi + 1] = op(temp[_bi + 1], temp[_ai + 1])
+            temp[_bi + 0x1] = op(temp[_bi + 0x1], temp[_ai + 0x1])
         end
 
-        offset = offset * 2
-        d = d >> 1
+        offset = offset << 0x1
+        d = d >> 0x1
     end
 
     # Flush last element
-    if ithread == 0
-        offset0 = conflict_free_offset(next_pow2 - 1)
-        temp[next_pow2 - 1 + offset0 + 1] = init
+    if ithread == 0x0
+        offset0 = conflict_free_offset(next_pow2 - 0x1)
+        temp[next_pow2 - 0x1 + offset0 + 0x1] = init
     end
 
     # Build block accumulation up
-    d = 1
+    d = typeof(ithread)(1)
     while d < next_pow2
-        offset = offset >> 1
+        offset = offset >> 0x1
         @synchronize()
 
         if ithread < d
-            _ai = offset * (2 * ithread + 1) - 1
-            _bi = offset * (2 * ithread + 2) - 1
+            _ai = offset * (0x2 * ithread + 0x1) - 0x1
+            _bi = offset * (0x2 * ithread + 0x2) - 0x1
             _ai += conflict_free_offset(_ai)
             _bi += conflict_free_offset(_bi)
 
-            t = temp[_ai + 1]
-            temp[_ai + 1] = temp[_bi + 1]
-            temp[_bi + 1] = op(temp[_bi + 1], t)
+            t = temp[_ai + 0x1]
+            temp[_ai + 0x1] = temp[_bi + 0x1]
+            temp[_bi + 0x1] = op(temp[_bi + 0x1], t)
         end
 
-        d = d * 2
+        d = d << 0x1
     end
 
     # Later blocks should always be inclusively-scanned
-    if inclusive || iblock != 0
+    if inclusive || iblock != 0x0
         # To compute an inclusive scan, shift elements left...
         @synchronize()
-        t1 = temp[ai + bank_offset_a + 1]
-        t2 = temp[bi + bank_offset_b + 1]
+        t1 = temp[ai + bank_offset_a + 0x1]
+        t2 = temp[bi + bank_offset_b + 0x1]
         @synchronize()
 
-        if ai > 0
-            temp[ai - 1 + conflict_free_offset(ai - 1) + 1] = t1
+        if ai > 0x0
+            temp[ai - 0x1 + conflict_free_offset(ai - 0x1) + 0x1] = t1
         end
-        temp[bi - 1 + conflict_free_offset(bi - 1) + 1] = t2
+        temp[bi - 0x1 + conflict_free_offset(bi - 0x1) + 0x1] = t2
 
         # ...and accumulate the last value too
-        if bi == 2 * block_size - 1
-            if iblock < num_blocks - 1
-                temp[bi + bank_offset_b + 1] = op(t2, v[(iblock + 1) * block_size * 2])
+        if bi == 0x2 * block_size - 0x1
+            if iblock < num_blocks - 0x1
+                temp[bi + bank_offset_b + 0x1] = op(t2, v[(iblock + 0x1) * block_size * 0x2])
             else
-                temp[bi + bank_offset_b + 1] = op(t2, v[len])
+                temp[bi + bank_offset_b + 0x1] = op(t2, v[len])
             end
         end
     end
@@ -125,16 +125,16 @@ end
     @synchronize()
 
     # Write this block's final prefix to global array and set flag to "block prefix computed"
-    if bi == 2 * block_size - 1
-        prefixes[iblock + 1] = temp[bi + bank_offset_b + 1]
-        flags[iblock + 1] = ACC_FLAG_P
+    if bi == 0x2 * block_size - 0x1
+        prefixes[iblock + 0x1] = temp[bi + bank_offset_b + 0x1]
+        flags[iblock + 0x1] = ACC_FLAG_P
     end
 
     if block_offset + ai < len
-        v[block_offset + ai + 1] = temp[ai + bank_offset_a + 1]
+        v[block_offset + ai + 0x1] = temp[ai + bank_offset_a + 0x1]
     end
     if block_offset + bi < len
-        v[block_offset + bi + 1] = temp[bi + bank_offset_b + 1]
+        v[block_offset + bi + 0x1] = temp[bi + bank_offset_b + 0x1]
     end
 end
 
@@ -150,44 +150,44 @@ end
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1 + 1              # Skipping first block
-    ithread = @index(Local, Linear) - 1
-    block_offset = iblock * block_size * 2              # Processing two elements per thread
+    iblock = @index(Group, Linear) - 0x1 + 0x1              # Skipping first block
+    ithread = @index(Local, Linear) - 0x1
+    block_offset = iblock * block_size * 0x2                # Processing two elements per thread
 
     # Each block looks back to find running prefix sum
     running_prefix = init
-    inspected_block = iblock - 1
-    while inspected_block >= 0
+    inspected_block = signed(typeof(iblock))(iblock) - 0x1
+    while inspected_block >= 0x0
 
         # Opportunistic: a previous block finished everything
-        if flags[inspected_block + 1] == ACC_FLAG_A
+        if flags[inspected_block + 0x1] == ACC_FLAG_A
             # Previous blocks (except last) always have filled values in v, so index is inbounds
-            running_prefix = op(running_prefix, v[(inspected_block + 1) * block_size * 2])
+            running_prefix = op(running_prefix, v[(inspected_block + 0x1) * block_size * 0x2])
             break
         else
-            running_prefix = op(running_prefix, prefixes[inspected_block + 1])
+            running_prefix = op(running_prefix, prefixes[inspected_block + 0x1])
         end
 
-        inspected_block -= 1
+        inspected_block -= 0x1
     end
 
     # Now we have aggregate prefix of all previous blocks, add it to all our elements
     ai = ithread
     if block_offset + ai < len
-        v[block_offset + ai + 1] = op(running_prefix, v[block_offset + ai + 1])
+        v[block_offset + ai + 0x1] = op(running_prefix, v[block_offset + ai + 0x1])
     end
 
     bi = ithread + block_size
     if block_offset + bi < len
-        v[block_offset + bi + 1] = op(running_prefix, v[block_offset + bi + 1])
+        v[block_offset + bi + 0x1] = op(running_prefix, v[block_offset + bi + 0x1])
     end
 
     # Set flag for "aggregate of all prefixes up to this block finished"
     @synchronize()      # This is needed so that the flag is not set before copying into v, but
                         # there should be better memory fences to guarantee ordering without
                         # thread synchronization...
-    if ithread == 0
-        flags[iblock + 1] = ACC_FLAG_A
+    if ithread == 0x0
+        flags[iblock + 0x1] = ACC_FLAG_A
     end
 end
 
@@ -198,7 +198,7 @@ function accumulate!(
     init,
     inclusive::Bool=true,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractGPUVector}=nothing,
     temp_flags::Union{Nothing, AbstractGPUVector}=nothing,
 )
@@ -253,7 +253,7 @@ function accumulate!(
     init,
     inclusive::Bool=true,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
     temp_flags::Union{Nothing, AbstractVector}=nothing,
 )
@@ -283,7 +283,7 @@ function accumulate(
     init,
     inclusive::Bool=true,
 
-    block_size::Int=128,
+    block_size::Int=256,
     temp::Union{Nothing, AbstractVector}=nothing,
     temp_flags::Union{Nothing, AbstractVector}=nothing,
 )

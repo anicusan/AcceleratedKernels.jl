@@ -3,12 +3,12 @@
 function _searchsortedfirst(v, x, lo::T, hi::T, comp) where T<:Integer
     hi = hi + T(1)
     len = hi - lo
-    @inbounds while len != 0
-        half_len = len >>> 0x01
+    @inbounds while len != 0x0
+        half_len = len >>> 0x1
         m = lo + half_len
         if comp(v[m], x)
-            lo = m + 1
-            len -= half_len + 1
+            lo = m + 0x1
+            len -= half_len + 0x1
         else
             hi = m
             len = half_len
@@ -23,7 +23,7 @@ function _searchsortedlast(v, x, lo::T, hi::T, comp) where T<:Integer
     lo = lo - u
     hi = hi + u
     @inbounds while lo < hi - u
-        m = lo + ((hi - lo) >>> 0x01)
+        m = lo + ((hi - lo) >>> 0x1)
         if comp(x, v[m])
             hi = m
         else

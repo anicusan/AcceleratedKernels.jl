@@ -973,7 +973,7 @@ end
             n1 = rand(1:100)
             n2 = rand(1:100)
             n3 = rand(1:100)
-            v = array_from_host([Point(rand(Float32), rand(Float32)) for _ in 1:n1, _ in 1:n2, _ in 1:n3])
+            v = array_from_host([Point2(rand(Float32), rand(Float32)) for _ in 1:n1, _ in 1:n2, _ in 1:n3])
             mgpu = minbox(v, dims)
 
             vh = Array(v)

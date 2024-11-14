@@ -20,8 +20,8 @@
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
     tid = ithread + iblock * N
 
@@ -44,9 +44,9 @@
         # end
 
         # Compute the base index in src (excluding the reduced axis)
-        input_base_idx = 0
+        input_base_idx = typeof(ithread)(0)
         tmp = tid
-        KernelAbstractions.Extras.@unroll for i in ndims:-1:1
+        KernelAbstractions.Extras.@unroll for i in ndims:-1i16:1i16
             if i != dims
                 input_base_idx += (tmp ÷ dst_strides[i]) * src_strides[i]
             end
@@ -57,11 +57,11 @@
         # are so many outer elements (each processed by an independent thread) that we afford to
         # loop sequentially over the reduced dimension (e.g. reduce(+, rand(3, 1000), dims=1))
         res = init
-        for i in 0:reduce_size - 1
+        for i in 0x0:reduce_size - 0x1
             src_idx = input_base_idx + i * src_strides[dims]
-            res = op(res, f(src[src_idx + 1]))
+            res = op(res, f(src[src_idx + 0x1]))
         end
-        dst[tid + 1] = res
+        dst[tid + 0x1] = res
     end
 end
 
@@ -89,8 +89,8 @@ end
     # accessing memory. As with C, the lower bound is inclusive, the upper bound exclusive.
 
     # Group (block) and local (thread) indices
-    iblock = @index(Group, Linear) - 1
-    ithread = @index(Local, Linear) - 1
+    iblock = @index(Group, Linear) - 0x1
+    ithread = @index(Local, Linear) - 0x1
 
     # Each block handles one output element
     if iblock < output_size
@@ -110,9 +110,9 @@ end
         # end
 
         # Compute the base index in src (excluding the reduced axis)
-        input_base_idx = 0
+        input_base_idx = typeof(ithread)(0)
         tmp = iblock
-        KernelAbstractions.Extras.@unroll for i in ndims:-1:1
+        KernelAbstractions.Extras.@unroll for i in ndims:-1i16:1i16
             if i != dims
                 input_base_idx += (tmp ÷ dst_strides[i]) * src_strides[i]
             end
@@ -125,53 +125,52 @@ end
         i = ithread
         while i < reduce_size
             src_idx = input_base_idx + i * src_strides[dims]
-            partial = op(partial, f(src[src_idx + 1]))
+            partial = op(partial, f(src[src_idx + 0x1]))
             i += N
         end
 
         # Store partial result in shared memory; now we are down to a single block to reduce within
-        sdata[ithread + 1] = partial
+        sdata[ithread + 0x1] = partial
         @synchronize()
 
-        if N >= 512
-            ithread < 256 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 256 + 1]))
+        if N >= 512u16
+            ithread < 256u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 256u16 + 0x1]))
             @synchronize()
         end
-        if N >= 256
-            ithread < 128 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 128 + 1]))
+        if N >= 256u16
+            ithread < 128u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 128u16 + 0x1]))
             @synchronize()
         end
-        if N >= 128
-            ithread < 64 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 64 + 1]))
+        if N >= 128u16
+            ithread < 64u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 64u16 + 0x1]))
             @synchronize()
         end
-        if N >= 64
-            ithread < 32 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 32 + 1]))
+        if N >= 64u16
+            ithread < 32u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 32u16 + 0x1]))
             @synchronize()
         end
-        if N >= 32
-            ithread < 16 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 16 + 1]))
+        if N >= 32u16
+            ithread < 16u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 16u16 + 0x1]))
             @synchronize()
         end
-        if N >= 16
-            ithread < 8 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 8 + 1]))
+        if N >= 16u16
+            ithread < 8u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 8u16 + 0x1]))
             @synchronize()
         end
-        if N >= 8
-            ithread < 4 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 4 + 1]))
+        if N >= 8u16
+            ithread < 4u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 4u16 + 0x1]))
             @synchronize()
         end
-        if N >= 4
-            ithread < 2 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 2 + 1]))
+        if N >= 4u16
+            ithread < 2u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 2u16 + 0x1]))
             @synchronize()
         end
-        if N >= 2
-            ithread < 1 && (sdata[ithread + 1] = op(sdata[ithread + 1], sdata[ithread + 1 + 1]))
+        if N >= 2u16
+            ithread < 1u16 && (sdata[ithread + 0x1] = op(sdata[ithread + 0x1], sdata[ithread + 1u16 + 0x1]))
             @synchronize()
         end
-    
-        if ithread == 0
-            dst[iblock + 1] = sdata[1]
+        if ithread == 0x0
+            dst[iblock + 0x1] = sdata[0x1]
         end
     end
 end

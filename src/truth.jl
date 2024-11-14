@@ -7,17 +7,17 @@
     # For example, CUDA F4.2 says "If a non-atomic instruction executed by a warp writes to the
     # same location in global memory for more than one of the threads of the warp, only one thread
     # performs a write and which thread does it is undefined."
-    temp[1] = 0
+    temp[0x1] = 0x0
     @synchronize()
 
     # The ndrange check already protects us from out of bounds access
     if pred(v[i])
-        temp[1] = 1
+        temp[0x1] = 0x1
     end
 
     @synchronize()
-    if temp[1] != 0
-        out[1] = 1
+    if temp[0x1] != 0x0
+        out[0x1] = 0x1
     end
 end
 
