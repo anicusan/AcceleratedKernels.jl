@@ -29,7 +29,7 @@ CPU Single- and Multi-Threaded
 
 Julia LTS, Stable, Pre-Release
 
-x86 and x64
+x86, x64, aarch64
 
 Windows, Ubuntu, MacOS
 
@@ -139,7 +139,7 @@ Julia v1.11
 
 [Metal](https://github.com/JuliaGPU/Metal.jl)
 
-[Known Issue](https://github.com/JuliaGPU/AcceleratedKernels.jl/issues/10) 
+[Known Issue with `accumulate` Only](https://github.com/JuliaGPU/AcceleratedKernels.jl/issues/10) 
 
 </td>
 <td>
