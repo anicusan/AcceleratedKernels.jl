@@ -1167,21 +1167,36 @@ end
     # Simple correctness tests
     v = array_from_host(1:100)
 
-    for cooperative in (false, true)
-        @test AK.any(x->x<0, v, cooperative=cooperative) === false
-        @test AK.any(x->x>99, v, cooperative=cooperative) === true
+    # mapreduce implementation
+    @test AK.any(x->x<0, v, cooperative=false) === false
+    @test AK.any(x->x>99, v, cooperative=false) === true
 
-        @test AK.all(x->x>0, v, cooperative=cooperative) === true
-        @test AK.all(x->x<100, v, cooperative=cooperative) === false
+    @test AK.all(x->x>0, v, cooperative=false) === true
+    @test AK.all(x->x<100, v, cooperative=false) === false
 
-        for _ in 1:100
-            num_elems = rand(1:100_000)
-            v = array_from_host(rand(Float32, num_elems))
-            @test AK.any(x->x<0, v, cooperative=cooperative) === false
-            @test AK.any(x->x<1, v, cooperative=cooperative) === true
-            @test AK.all(x->x<1, v, cooperative=cooperative) === true
-            @test AK.all(x->x<0, v, cooperative=cooperative) === false
-        end
+    # shortcircuiting GPU implementation
+    @test AK.any(x->x<0, v, cooperative=true) === false
+    @test AK.any(x->x>99, v, cooperative=true) === true
+
+    @test AK.all(x->x>0, v, cooperative=true) === true
+    @test AK.all(x->x<100, v, cooperative=true) === false
+
+    for _ in 1:100
+        num_elems = rand(1:100_000)
+        v = array_from_host(rand(Float32, num_elems))
+        @test AK.any(x->x<0, v, cooperative=false) === false
+        @test AK.any(x->x<1, v, cooperative=false) === true
+        @test AK.all(x->x<1, v, cooperative=false) === true
+        @test AK.all(x->x<0, v, cooperative=false) === false
+    end
+
+    for _ in 1:100
+        num_elems = rand(1:100_000)
+        v = array_from_host(rand(Float32, num_elems))
+        @test AK.any(x->x<0, v, cooperative=true) === false
+        @test AK.any(x->x<1, v, cooperative=true) === true
+        @test AK.all(x->x<1, v, cooperative=true) === true
+        @test AK.all(x->x<0, v, cooperative=true) === false
     end
 
     # Testing different settings
@@ -1189,3 +1204,4 @@ end
     AK.any(x->x<5, v, cooperative=false, block_size=64)
     AK.all(x->x<5, v, cooperative=false, block_size=64)
 end
+
