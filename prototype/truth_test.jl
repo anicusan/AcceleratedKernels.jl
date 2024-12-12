@@ -6,7 +6,8 @@ using PProf
 
 using KernelAbstractions
 # using oneAPI
-using CUDA
+# using CUDA
+using Metal
 
 import AcceleratedKernels as AK
 
@@ -14,7 +15,7 @@ import AcceleratedKernels as AK
 Random.seed!(0)
 
 
-v = CuArray(1:100)
+v = MtlArray(1:100)
 
 @assert AK.any(x->x<0, v, cooperative=false) === false
 @assert AK.any(x->x>99, v, cooperative=false) === true
@@ -35,18 +36,10 @@ println("simple all tests passed")
 
 
 
-v = CuArray(1:10_000_000)
+v = Array(1:10_000_000)
 
 println("AcceleratedKernels any (reduce based):")
 display(@benchmark(AK.any(x->x>9_999, v, cooperative=false)))
 
 println("AcceleratedKernels any (coop based):")
 display(@benchmark(AK.any(x->x>9_999, v, cooperative=true)))
-
-println("oneAPI minimum:")
-display(@benchmark(any(x->x>9_999, v)))
-
-println("CPU minimum:")
-vh = Array(v)
-display(@benchmark(any(x->x>9_999, vh)))
-

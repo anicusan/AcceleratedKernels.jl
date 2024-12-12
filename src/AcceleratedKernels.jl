@@ -7,7 +7,7 @@
 module AcceleratedKernels
 
 
-# No functionality exported by this package before discussion with community
+# No functions exported by default, to allow having the same names as Base without conflicts
 
 
 # Internal dependencies
